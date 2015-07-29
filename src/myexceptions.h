@@ -27,30 +27,6 @@ class filepos: public exception
 
 
 
-//tests
-class out_of_range_E: public exception
-{
-  virtual const char* what() const throw()
-  {
-    return "The mean energy is out of range";
-  }
-};
-
-class : public exception
-{
-  virtual const char* what() const throw()
-  {
-    return "The mean magnetization is less than 0!";
-  }
-};
-
-class Weighterror: public exception
-{
-  virtual const char* what() const throw()
-  {
-    return "The weight and acceptance ratio do not fit!";
-  }
-};
 
 
 

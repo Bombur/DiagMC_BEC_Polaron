@@ -21,7 +21,7 @@
 #include <stdexcept>
 #include "myexceptions.h"
 
-//matth and container
+//math and container
 #include "/project/theorie/h/H.Guertner/lib/Eigen/Eigen/Dense"
 #include <cmath>
 
@@ -32,26 +32,23 @@ namespace pt = boost::property_tree;
 using namespace Eigen;
 
 class DiagMC {
-  public:
+  private:
 	const double p, mu;				
-	const double E;
 	const double taumax;			//imaginary time cut off
-	double tau;			
-	double alpha; 					//correlation strength
-	int arcs;
-	
-	//Execution variables
-	const int Meas_its, Test_its, Write_its;
-	int RunTime;					//in seconds
+	const double taubin;
+	double E;
+	double G0p;
+	double tau;
+	double alpha; 					//coupling strength
 	
 	//Calculation variables
 	std::function<double()> drnd;
-	MatrixX2d Data;					//0:tau_i, 1:G(p,tau_i)
+	VectorXd Data;					//0:tau_i, 1:G(p,tau_i)
 		
 	//Analysis variables
 	int binl;						//binning length
 	Vector3d anabuffer;				//0:mean, 1:binning error, 2:integrated correlation time
-	Matrix<double,4,6>  stats; 		//0:attempted, 1:impossible, 2:rejected, 3:accepted, 4:acceptance ratio possible, 5:acceptance ratio total
+	Matrix<double,4,6>  stats; 		//0:attempted, 1:possible, 2:rejected, 3:accepted, 4:acceptance ratio possible, 5:acceptance ratio total
 	
 	//io variables
 	std::string path;
@@ -61,8 +58,13 @@ class DiagMC {
 	long long Statfile_pos;
 	
   public:
+	//Execution variables
+	const int Meas_its, Test_its, Write_its;
+	const int RunTime;					//in seconds
+	
 	//DiagMC_config.cpp
 	DiagMC(const pt::ptree &);
+	~DiagMC();
 
 	//DiagMC.cpp
 	void initialize();							
@@ -73,25 +75,25 @@ class DiagMC {
 	void measure(const int & whichmeas);
 	
 	//DiagMC_estimator.cpp
-	void status(const int & which);
-	void mean(const VectorXi & measdata);
-	void bin_ana(const VectorXi & measdata);
+	void status();
+	double mean(const VectorXd & measdata);
+	void bin_ana(const VectorXd & measdata);
 	
 	//DiagMC_io.cpp
 	void write();
 	void Stattofile();
-	void meantofile(std::ofstream & file, const long long writing_pos);
-	void printmean(const std::string Observable);
+	//void meantofile(std::ofstream & file, const long long writing_pos);
+	void printmean();
 	void printstats();
 	
 	//Test functions
-	void test(); 				//Ising.cpp
-	void Etest();				//Ising.cpp
-	void magtest();				//Ising.cpp
+	void test(const int &); 				//Ising.cpp
+
 	void printallvariables();	//Ising_io.cpp
 	
 };
-	
+
+
 
    
 #endif

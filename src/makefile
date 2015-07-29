@@ -32,17 +32,16 @@ LDFLAGS=
 INC=/project/theorie/h/H.Guertner/lib
 
 #Sources
-SOURCE=Ising_markov_main.cpp Ising.cpp Ising_config.cpp Ising_io.cpp Ising_updates.cpp NeighborTable.cpp 
-
+SOURCE=DiagMC_run.cpp DiagMC_config.cpp DiagMC_io.cpp DiagMC_updates.cpp DiagMC_estimator.cpp DiagMC_test.cpp 
 
 #Objects
 OBJ= $(SOURCE:.cpp=.o)
 
 #Header
-DEPS= Ising.h NeighborTable.h myexceptions.h
+DEPS= DiagMC.h myexceptions.h
 
 #Executeable
-EXE= ../Ising_markov
+EXE= ../../DiagMC_FP
 
 #----------------------------------------------
 

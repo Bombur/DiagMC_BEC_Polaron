@@ -1,5 +1,5 @@
-// Advanced Computational Physics
-// Exercise 3.1
+// Froehlich Polaron
+// Hans Peter Guertner
 #include <iostream>
 #include <string>
 #include <boost/property_tree/ptree.hpp>
@@ -11,27 +11,40 @@ namespace pt = boost::property_tree;
 using namespace std::chrono;
 
 
+void DiagMC::change_tau() {
+  double ntau = - log(drnd())/E;		//new tau
+  //std::cout<< ntau<< '\n';
+  stats(0,0) +=1;						//attempted
+    
+  if (ntau < taumax) {
+	stats(0,1) +=1;						//possible
+	stats(0,3) +=1;						//accepted
+	tau = ntau;
+  }
+  else {
+	stats(0,2) +=1;						//rejected
+  }
+}
+
+
 int main() {
   pt::ptree config;
-  pt::read_json("Froehlich.json", config);
+  pt::read_json("DiagMC_FP.json", config);
   
   DiagMC fp(config);
   
   steady_clock::time_point time_begin = steady_clock::now();  //start time
-  int cycle=0;
   double nseconds;
   do {	
 	//initialize();	
-	for (int i=0; i<fp.Write_its); i++) {
+	for (int i=0; i<fp.Write_its; i++) {
 	  for (int j=0; j<fp.Test_its; j++) {
 		for (int k=0; k<fp.Meas_its; k++) {
-		  if (arcs==0) {
-			fp.change_tau();
-		  }
+		  fp.change_tau();
 		}
 		fp.measure(j);
 	  }
-	  fp.test();
+	  fp.test(i);
 	}
 	fp.status();
 	
@@ -65,12 +78,8 @@ int main() {
 	steady_clock::time_point time_end = steady_clock::now();
 	steady_clock::duration time_span = time_end-time_begin;
 	nseconds = double(time_span.count()) * steady_clock::period::num / steady_clock::period::den;
-  } while (nseconds < RunTime);
+  } while (nseconds < fp.RunTime);
   
-  Datafile.close();
-  Statsfile.close();
-
- 
   return 0;
 }
 

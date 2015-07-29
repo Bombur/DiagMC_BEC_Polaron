@@ -1,19 +1,20 @@
 #include "DiagMC.h"
 
-void DiagMC::status(const int & which) {
-  mean(Data.col(1));
-  bin_ana(Data.col(1));
+void DiagMC::status() {
+  //mean(Data);
+  //bin_ana(Data);
   
-  printmean();
+  //printmean();
   printstats();
 }
 
-void DiagMC::mean(const VectorXd & measdata) {
+double DiagMC::mean(const VectorXd & measdata) {
   int N=measdata.size();
-  anabuffer(0) = measdata.dot(VectorXd::Ones(N)) / N; 
+  anabuffer(0) = measdata.dot(VectorXd::Ones(N)) / N;
+  return anabuffer(0);
 }
 
-void DiagMC::bin_ana(const VectorXi & measdata) {
+void DiagMC::bin_ana(const VectorXd & measdata) {
   int N = measdata.size();
   double nB= N / binl;
   if (N%binl !=0) {std::cout<< "Warning! Measurements and Binning Length do not fit!"<< std::endl;}
