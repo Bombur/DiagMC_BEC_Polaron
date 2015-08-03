@@ -6,8 +6,17 @@ void DiagMC::write() {
 	//long long tmp=Datafile.tellp();
 	if (Datafile_pos!=0) {throw filepos();}
 	
+	MatrixXd output(taubin, 5);
+	
+	int CG0p = 0;
+	for (int i=0; i< taubin; i++) {
+	  CG0p += Data(i, 2);
+	  output(i, 0) = i*taumax/taubin;
+	}
+	output.rightCols(4)=Data*(G0p/CG0p);
+	
 	Datafile.seekp(Datafile_pos);
-	Datafile << Data*G0p/stats(0,1) << '\n';
+	Datafile << output << '\n';
 	Datafile.flush();
   }
   catch (std::exception& e) {
@@ -33,23 +42,6 @@ void DiagMC::Stattofile() {
 }
 
 
-
-/*
-void Ising_markov_method::meantofile(std::ofstream &file, const long long writing_pos) {
-  try {
-	if (!(file.is_open())) {throw openwritefile();}
-	long long tmp=file.tellp();
-	if (writing_pos!=tmp) {throw filepos();}
-	
-	file << meanbuffer.transpose() << '\n';
-	file.flush();
-  }
-  catch (std::exception& e) {
-	std::cerr << e.what() << std::endl;
-	exit(EXIT_FAILURE);
-  }
-}
-*/
 
 void DiagMC::printmean() {
   std::cout << "G(p)" << '\t' << "Binning Error" << '\t' << "Integrated Correlation Time" << '\n';

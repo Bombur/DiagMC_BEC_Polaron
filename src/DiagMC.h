@@ -46,7 +46,7 @@ class DiagMC {
 
 	
 	//Calculation variables
-	VectorXd Data;					//0:tau_i, 1:G(p,tau_i)
+	MatrixXd Data;					//0:tau_i, 1:G(p,tau_i), 2:G0(p,tau_i), 3:G1(p,tau_i), 4:G2(p,tau_i)
 	Diagram diag;
 			
 	//Analysis variables
@@ -83,6 +83,7 @@ class DiagMC {
 	int remove();
 	
 	//DiagMC_updates.cpp
+	int get_order() {return diag.get_order();};
 	void measure(const int & whichmeas);
 	
 	//DiagMC_estimator.cpp

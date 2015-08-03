@@ -186,3 +186,85 @@ void Diagram::remove() {
 
 }
 
+class dnf_diagvec: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "Diagram vector sizes do not fit!";
+  }
+};
+
+class timeserr: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "Error in Diagram::times!";
+  }
+};
+
+class phproperr: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "Error in Diagram::phprop!";
+  }
+};
+
+class elproperr: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "Error in Diagram::elprop!";
+  }
+};
+
+class momerr: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "Momentum is not conserved!";
+  }
+};
+
+class propopen: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "A propergator is not closed";
+  }
+};
+
+
+
+void Diagram::test() {
+  try {
+	if (times.size() != (2*get_order())+2) {throw dnf_vecsize();}
+	if (phprop.size() != times.size()-1) {throw dnf_vecsize();}
+	if (elprop.size() != ph.size()) {throw dnf_vecsize();}
+	
+	if (times[0][1] != (2*get_order())+1) {throw timeserr();}
+	if (times[(2*get_order())+1][1] != 0) {throw timeserr();}
+	if (get_q(0) != get_q(2*get_order())) {throw phproperr();}
+	if (get_p(0) != get_p(2*get_order())) {throw elproperr();}
+	
+	  
+	  
+	VectorXd tmp=VectorXd::Zero((2*get_order())+2);
+	for (int i=0; i<(2*get_order())+2; i++) {
+	  tmp(times[i][1]) +=1;
+	  if (times[i][1] == i) {throw timeserr();}
+	}
+	for (int i=0; i<(2*get_order())+1; i++) {
+	  if (get_p(i)+get_q()!= get_p(0)) {throw momerr();}
+	}
+	for (int i=0; i<(2*get_order())+2; i++) {
+	  if (tmp(i) != 1) {throw propopen();}
+	}
+  } catch (std::exception& e) {
+      std::cerr << e.what() << std::endl;
+      exit(EXIT_FAILURE);
+  }
+
+}
+
+

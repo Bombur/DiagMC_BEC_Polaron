@@ -18,7 +18,7 @@ DiagMC::DiagMC(const pt::ptree & config):p(config.get<double>("Momentum")), mu(c
 	std::uniform_real_distribution<double> uni_dist2(0,1);
 	drnd = std::bind ( uni_dist2, generator);
 	
-	Data = VectorXd::Zero(taubin);
+	Data = MatrixXd::Zero(taubin, 5);
   
 	binl=config.get<int>("Binning_Length");
 	anabuffer.setZero();

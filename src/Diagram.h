@@ -68,6 +68,9 @@ class Diagram {
 	void insert();
 	void remove();
 	
+	void test();
+	
+	
 };
 
 
