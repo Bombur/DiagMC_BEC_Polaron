@@ -8,6 +8,14 @@ class dnf_vecsize: public std::exception
   }
 };
 
+class no_propose: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "Nothing proposed!";
+  }
+};
+
 std::vector<double> operator+(const std::vector<double> & vec1, const std::vector<double> & vec2){
   try {
 	if (vec1.size() != vec2.size()) {throw dnf_vecsize();}
@@ -67,18 +75,23 @@ Diagram::Diagram(double p, double tau, double my, double omega, double, alph, in
   
 }
 
-void Diagram::propose() {
+void Diagram::random_arc() {
+  pr_arc = (int)(drnd()*(2*old.get_order()+1));
+}
+
+
+void Diagram::propose_insert() {
   try{
-	arc = (int)(drnd()*(2*old.get_order()+1));								//arc to insert
+	random_arc();										//arc to insert
 	
-	tau1[0] = (drnd()*(get_tfin(arc)- get_tinit(arc)))+ get_tinit(arc);			//tau1
-	tau1[1] = arc+2;
-	tau2[0] = (drnd()*(get_tfin(arc)-tau1[0]))+tau1[0];							//tau2
-	tau2[1] = arc+1;
+	pr_tau1[0] = (drnd()*(get_tfin(pr_arc)- get_tinit(pr_arc)))+ get_tinit(pr_arc);			//tau1
+	pr_tau1[1] = pr_arc+2;
+	pr_tau2[0] = (drnd()*(get_tfin(pr_arc)-pr_tau1[0]))+pr_tau1[0];							//tau2
+	pr_tau2[1] = pr_arc+1;
 	
-	q[0] = sqrt(-2*log(drnd()))*cos(2*M_PI*drnd())/sqrt(tau2[0]-tau1[0]);		//qx
-	q[1] = sqrt(-2*log(drnd()))*sin(2*M_PI*drnd())/sqrt(tau2[0]-tau1[0]);		//qy
-	q[2] = sqrt(-2*log(drnd()))*cos(2*M_PI*drnd())/sqrt(tau2[0]-tau1[0]);		//qz
+	pr_q[0] = sqrt(-2*log(drnd()))*cos(2*M_PI*drnd())/sqrt(pr_tau2[0]-pr_tau1[0]);		//qx
+	pr_q[1] = sqrt(-2*log(drnd()))*sin(2*M_PI*drnd())/sqrt(pr_tau2[0]-pr_tau1[0]);		//qy
+	pr_q[2] = sqrt(-2*log(drnd()))*cos(2*M_PI*drnd())/sqrt(pr_tau2[0]-pr_tau1[0]);		//qz
 	
   }	catch (std::exception& e) {
 	std::cerr << e.what() << std::endl;
@@ -86,12 +99,35 @@ void Diagram::propose() {
   }
 }
 
+int Diagram::propose_remove() {
+  try{
+	random_arc();	//arc to insert
+	
+	if (pr_arc != times[pr_arc+1][1]) {return 0;}
+	
+	pr_tau1[0] = get_tfin(pr_arc);			//tau1
+	pr_tau1[1] = -1;
+	pr_tau2[0] = get_tfin(pr_arc);							//tau2
+	pr_tau2[1] = -1;
+	
+	pr_q = get_q(pr_arc);		//qx
+		
+	return 1;
+  }	catch (std::exception& e) {
+	std::cerr << e.what() << std::endl;
+	exit(EXIT_FAILURE);
+  }
+}
+
+}
+
+
 double Diagram::high_weigth() {
-  return alpha*exp(((square(get_p(arc)-q)/2) - mu)(tau1[0]-tau2[0]) - wp*(tau2[0]-tau1[0])) / square(q);
+  return alpha*exp(((square(get_p(pr_arc)-pr_q)/2) - mu)(pr_tau1[0]-pr_tau2[0]) - wp*(pr_tau2[0]-pr_tau1[0])) / square(pr_q);
 }
 
 double Diagram::low_weigth() {
-  return exp(((square(get_p())/2) - mu)(tau1[0]-tau2[0]));
+  return exp(((square(get_p(pr_arc))/2) - mu)(pr_tau1[0]-pr_tau2[0]));
 }
 
 double Diagram::P_hilo(double Prem){
@@ -99,23 +135,24 @@ double Diagram::P_hilo(double Prem){
 }
 
 double Diagram::P_lohi(double Pins){
-  return Pins/(2*get_order()+1) /(get_tfin(arc)-get_tinit(arc)) /(get_tfin(arc)-tau1[0]) *pow((tau2[0]-tau1[0])/2/M_PI, 3/2) * exp((square(get_p(arc)-q)/2) (tau1[0]-tau2[0]));
+  return Pins/(2*get_order()+1) /(get_tfin(pr_arc)-get_tinit(pr_arc)) /(get_tfin(pr_arc)-pr_tau1[0]) *pow((pr_tau2[0]-pr_tau1[0])/2/M_PI, 3/2) * exp((square(get_p(pr_arc)-pr_q)/2) (pr_tau1[0]-pr_tau2[0]));
 }
 
 void Diagram::insert() {
   try{
-	std::vector< std::vector<double> >::iterator tit = times.begin() + arc;		//iterators for different matrices
-	std::vector< std::vector<double> >::iterator eit = elprop.begin() + arc;
-	std::vector< std::vector<double> >::iterator pit = phprop.begin() + arc;
+    if (pr_tau1.empty() || pr_tau2.empty() || pr_q.empty()) {throw no_propose();};
+	std::vector< std::vector<double> >::iterator tit = times.begin() + pr_arc;		//iterators for different matrices
+	std::vector< std::vector<double> >::iterator pit = phprop.begin() + pr_arc;
+	std::vector< std::vector<double> >::iterator eit = elprop.begin() + pr_arc;
 	
-	times.insert(tit+1, std::move(tau1));										//insert tau1 and tau2
-	times.insert(tit+2, std::move(tau2));
+	times.insert(tit+1, std::move(pr_tau1));										//insert tau1 and tau2
+	times.insert(tit+2, std::move(pr_tau2));
 	
-	phprop.insert(pit+1, std::move(q + get_q(arc)));							//insert q+oldq in arc+1
-	phprop.insert(pit+2, std::move(get_q(arc)));								//insert oldq in arc+2
+	phprop.insert(pit+1, std::move(pr_q + get_q(pr_arc)));							//insert q+oldq in arc+1
+	phprop.insert(pit+2, std::move(get_q(pr_arc)));								//insert oldq in arc+2
 	
-	elprop.insert(pit+1, std::move(get_p(arc) - get_q(arc+1)));					//insert oldp-q in arc+1
-	elprop.insert(pit+2, std::move(get_p(arc)));								//insert oldp in arc+2	  
+	elprop.insert(eit+1, std::move(get_p(pr_arc) - get_q(pr_arc+1)));					//insert oldp-q in arc+1
+	elprop.insert(eit+2, std::move(get_p(pr_arc)));								//insert oldp in arc+2	  
   
 	order+=1;
 	
@@ -125,3 +162,26 @@ void Diagram::insert() {
   }
 
 }
+
+void Diagram::remove() {
+   try{
+    if (pr_tau1.empty() || pr_tau2.empty() || pr_q.empty()) {throw no_propose();};
+      std::vector< std::vector<double> >::iterator tit = times.begin() + pr_arc;		//iterators for different matrices
+      std::vector< std::vector<double> >::iterator pit = phprop.begin() + pr_arc;
+      std::vector< std::vector<double> >::iterator eit = elprop.begin() + pr_arc;
+	
+      times.erase(tit, tit+1);
+	
+      phprop.erase(pit, pit+1);
+      
+      elprop.erase(eit, eit+1);  
+  
+      order-=1;
+	
+  } catch (std::exception& e) {
+      std::cerr << e.what() << std::endl;
+      exit(EXIT_FAILURE);
+  }
+
+}
+

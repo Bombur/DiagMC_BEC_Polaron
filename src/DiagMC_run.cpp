@@ -26,6 +26,36 @@ void DiagMC::change_tau() {
   }
 }
 
+void DiagMC::insert() {
+  stats(1,0) +=1;		//attempted
+  stats(1,1) +=1;		//possible
+  diag.propose_insert();
+  
+  if (drnd() < ((Prem*diag.high_weigth()*diag.P_hilo())/(Pins*diag.low_weight()*diag.P_lohi()))) {
+    stats(1,3) +=1;
+    diag.insert();
+  }
+  else {
+    stats(1,2) +=1;
+  }
+    
+}
+
+void DiagMC::remove() {
+  stats(2,0) +=1;		//attempted
+  if(diag.propose_remove()==0) {break};
+  stats(2,1) +=1;		//possible
+  
+  if (drnd() < ((Pins*diag.low_weight()*diag.P_lohi())/(Prem*diag.high_weigth()*diag.P_hilo()))) {
+    stats(2,3) +=1;
+    diag.remove();
+  }
+  else {
+    stats(1,2) +=1;
+  }
+  
+}
+
 
 int main() {
   pt::ptree config;

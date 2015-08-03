@@ -38,11 +38,13 @@ class Diagram {
 	std::vector< std::vector<double> > phprop;
 	std::vector< std::vector<double> > elprop;
 	
-	//proposing data for insert
-	int arc;
-	std::vector<double> tau1;
-	std::vector<double> tau2;
-	std::vector<double> q;
+	//proposing
+	int pr_arc;
+	int pr_tauin, pr_taufin;
+	std::vector<double> pr_tau1;
+	std::vector<double> pr_tau2;
+	std::vector<double> pr_q;
+	std::vector<double> pr_p;
 	
   
   public:
@@ -54,7 +56,9 @@ class Diagram {
 	std::vector<double> get_q(int arc) {return phprop[arc];}
 	std::vector<double> get_p(int arc) {return elprop[arc];} 
 	
-	void propose();
+	void random_arc();
+	void propose_insert();
+	int propose_remove();
 	
 	double high_weigth();
 	double low_weight();
