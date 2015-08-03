@@ -2,7 +2,7 @@
 
 namespace pt = boost::property_tree;
 
-DiagMC::DiagMC(const pt::ptree & config):p(config.get<double>("Momentum")), mu(config.get<double>("Chemical_Potential")), taumax(config.get<double>("Tau_max")), taubin(config.get<double>("Tau_bin")), Meas_its(config.get<int>("Its_per_Measure")), Test_its(config.get<int>("Its_per_Test")), Write_its(config.get<int>("Its_per_Write")), RunTime(config.get<int>("RunTime")) { 
+DiagMC::DiagMC(const pt::ptree & config):p(config.get<double>("Momentum")), mu(config.get<double>("Chemical_Potential")), taumax(config.get<double>("Tau_max")), taubin(config.get<double>("Tau_bin")), Prem(config.get<double>("Remove_Probability")), Pins(config.get<double>("Insert_Probability")), Meas_its(config.get<int>("Its_per_Measure")), Test_its(config.get<int>("Its_per_Test")), Write_its(config.get<int>("Its_per_Write")), RunTime(config.get<int>("RunTime")) { 
   try{
 	E = pow(p,2)/2 - mu;
 	G0p = (1-exp(-E*taumax))/E;

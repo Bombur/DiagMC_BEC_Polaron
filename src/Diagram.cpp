@@ -60,7 +60,7 @@ double square(const std::vector<double> & vec1){
   }
 }
 
-Diagram::Diagram(double p, double tau, double my, double omega, double, alph, int ord, std::function<double()> rnd): mu(my), wp(omega), alpha(alph), order(ord), drnd(rnd) {
+Diagram::Diagram(double p, double tau, double my, double omega, double alpha, int ord, std::function<double()> rnd): mu(my), wp(omega), alpha(alph), order(ord), drnd(rnd) {
   times.reserve(50);
   times.assign(2, std::vector<double>(2, 0));
   times[0][1] = 1;
@@ -103,7 +103,8 @@ int Diagram::propose_remove() {
   try{
 	random_arc();	//arc to insert
 	
-	if (pr_arc != times[pr_arc+1][1]) {return 0;}
+	if (pr_arc != times[pr_arc+1][1]) {return -1;}
+	if (order == 0) {return -2;}
 	
 	pr_tau1[0] = get_tfin(pr_arc);			//tau1
 	pr_tau1[1] = -1;
@@ -112,7 +113,7 @@ int Diagram::propose_remove() {
 	
 	pr_q = get_q(pr_arc);		//qx
 		
-	return 1;
+	return 0;
   }	catch (std::exception& e) {
 	std::cerr << e.what() << std::endl;
 	exit(EXIT_FAILURE);

@@ -38,15 +38,14 @@ class DiagMC {
 	const double p, mu;			//mu and initial p 		
 	const double taumax;			//imaginary time cut off
 	const double taubin;			//bins für 0 bis tau
-	const double Prem, Pins;		//probabilities to choose remove or insert branch
+	double alpha; 					//coupling strength
 	double E;
 	double G0p;				//Green's Function G0(p)
 	double tau;
-	double alpha; 					//coupling strength
+	
 
 	
 	//Calculation variables
-	std::function<double()> drnd;
 	VectorXd Data;					//0:tau_i, 1:G(p,tau_i)
 	Diagram diag;
 			
@@ -64,6 +63,11 @@ class DiagMC {
 	long long Statfile_pos;
 	
   public:
+	const double Prem, Pins;		//probabilities to choose remove or insert branch
+	
+	//Random Function
+	std::function<double()> drnd;
+	
 	//Execution variables
 	const int Meas_its, Test_its, Write_its;
 	const int RunTime;					//in seconds
@@ -76,7 +80,7 @@ class DiagMC {
 	void initialize();							
 	void change_tau();
 	void insert();
-	void remove();
+	int remove();
 	
 	//DiagMC_updates.cpp
 	void measure(const int & whichmeas);

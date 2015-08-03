@@ -41,9 +41,9 @@ void DiagMC::insert() {
     
 }
 
-void DiagMC::remove() {
+int DiagMC::remove() {
   stats(2,0) +=1;		//attempted
-  if(diag.propose_remove()==0) {break};
+  if(diag.propose_remove()!=0) {return -1;};
   stats(2,1) +=1;		//possible
   
   if (drnd() < ((Pins*diag.low_weight()*diag.P_lohi())/(Prem*diag.high_weigth()*diag.P_hilo()))) {
@@ -53,7 +53,8 @@ void DiagMC::remove() {
   else {
     stats(1,2) +=1;
   }
-  
+    
+  return 0;
 }
 
 
@@ -70,7 +71,14 @@ int main() {
 	for (int i=0; i<fp.Write_its; i++) {
 	  for (int j=0; j<fp.Test_its; j++) {
 		for (int k=0; k<fp.Meas_its; k++) {
-		  fp.change_tau();
+		  if (fp.drnd() < Prem) {
+			fp.remove();
+		  }
+		  else {
+			fp.insert();			  
+		  }
+		  
+		  //fp.change_tau();
 		}
 		fp.measure(j);
 	  }
