@@ -32,13 +32,13 @@ LDFLAGS=
 INC=/project/theorie/h/H.Guertner/lib
 
 #Sources
-SOURCE=DiagMC_run.cpp DiagMC_config.cpp DiagMC_io.cpp DiagMC_updates.cpp DiagMC_estimator.cpp DiagMC_test.cpp 
+SOURCE=DiagMC_run.cpp DiagMC_config.cpp DiagMC_io.cpp DiagMC_updates.cpp DiagMC_estimator.cpp DiagMC_test.cpp Diagram.cpp
 
 #Objects
 OBJ= $(SOURCE:.cpp=.o)
 
 #Header
-DEPS= DiagMC.h myexceptions.h
+DEPS= DiagMC.h Diagram.h
 
 #Executeable
 EXE= ../../DiagMC_FP

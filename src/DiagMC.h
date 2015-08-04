@@ -19,7 +19,6 @@
 //exceptions
 #include <exception>
 #include <stdexcept>
-#include "myexceptions.h"
 
 //math and container
 #include "/project/theorie/h/H.Guertner/lib/Eigen/Eigen/Dense"
@@ -37,21 +36,22 @@ class DiagMC {
   private:
 	const double p, mu;			//mu and initial p 		
 	const double taumax;			//imaginary time cut off
-	const double taubin;			//bins für 0 bis tau
-	double alpha; 					//coupling strength
+	const int taubin;			//bins für 0 bis tau
+	const double alpha; 					//coupling strength
+	const double omegap;
 	double E;
 	double G0p;				//Green's Function G0(p)
 	double tau;
 	
-
 	
 	//Calculation variables
-	MatrixXd Data;					//0:tau_i, 1:G(p,tau_i), 2:G0(p,tau_i), 3:G1(p,tau_i), 4:G2(p,tau_i)
+	MatrixXi Data;					//0:G(p,tau_i), 1:G0(p,tau_i), 2:G1(p,tau_i), 3:G2(p,tau_i)
 	Diagram diag;
 			
 	//Analysis variables
 	int binl;						//binning length
 	Vector3d anabuffer;				//0:mean, 1:binning error, 2:integrated correlation time
+	
 	//rows of stats: 0:change tau, 1:insert, 2:remove
 	Matrix<double,4,6>  stats; 		//0:attempted, 1:possible, 2:rejected, 3:accepted, 4:acceptance ratio possible, 5:acceptance ratio total
 	
@@ -70,16 +70,15 @@ class DiagMC {
 	
 	//Execution variables
 	const int Meas_its, Test_its, Write_its;
-	const int RunTime;					//in seconds
+	const int RunTime;			//in seconds
 	
 	//DiagMC_config.cpp
 	DiagMC(const pt::ptree &);
 	~DiagMC();
 
 	//DiagMC_run.cpp
-	void initialize();							
 	void change_tau();
-	void insert();
+	int insert();
 	int remove();
 	
 	//DiagMC_updates.cpp
@@ -87,21 +86,18 @@ class DiagMC {
 	void measure(const int & whichmeas);
 	
 	//DiagMC_estimator.cpp
-	void status();
 	double mean(const VectorXd & measdata);
 	void bin_ana(const VectorXd & measdata);
 	
 	//DiagMC_io.cpp
 	void write();
 	void Stattofile();
-	//void meantofile(std::ofstream & file, const long long writing_pos);
+	void status();
 	void printmean();
 	void printstats();
 	
-	//Test functions
-	void test(const int &); 				//Ising.cpp
-
-	void printallvariables();	//Ising_io.cpp
+	//DiagMC_test.cpp
+	void test(); 				
 	
 };
 

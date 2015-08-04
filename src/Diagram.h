@@ -14,7 +14,6 @@
 //exceptions
 #include <exception>
 #include <stdexcept>
-#include "myexceptions.h"
 
 //math and container
 #include "/project/theorie/h/H.Guertner/lib/Eigen/Eigen/Dense"
@@ -38,9 +37,9 @@ class Diagram {
 	std::vector< std::vector<double> > phprop;
 	std::vector< std::vector<double> > elprop;
 	
-	//proposing
+	//proposing pr_
 	int pr_arc;
-	int pr_tauin, pr_taufin;
+	double pr_tauin, pr_taufin;
 	std::vector<double> pr_tau1;
 	std::vector<double> pr_tau2;
 	std::vector<double> pr_q;
@@ -48,19 +47,21 @@ class Diagram {
 	
   
   public:
-	Diagram(double p, double tau, double my, double omega, double alph, int ord, std::function<double()> rnd);
+	Diagram();
+	Diagram(double p, double tau, double my, double omega, double alph, std::function<double()> rnd);
+	void set(double p, double tau, double my, double omega, double alph, std::function<double()> rnd);
 	
 	int get_order() {return order;};
-	double get_tinit(int arc) {return times[arc][0]};
-	double get_tfin(int arc) {return times[arc+1][0]};
+	double get_tinit(int arc) {return times[arc][0];};
+	double get_tfin(int arc) {return times[arc+1][0];};
 	std::vector<double> get_q(int arc) {return phprop[arc];}
 	std::vector<double> get_p(int arc) {return elprop[arc];} 
 	
 	void random_arc();
-	void propose_insert();
+	int propose_insert();
 	int propose_remove();
 	
-	double high_weigth();
+	double high_weight();
 	double low_weight();
 	double P_lohi();
 	double P_hilo();
@@ -69,6 +70,7 @@ class Diagram {
 	void remove();
 	
 	void test();
+	void printall();
 	
 	
 };

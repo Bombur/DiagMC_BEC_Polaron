@@ -26,32 +26,32 @@ void DiagMC::change_tau() {
   }
 }
 
-void DiagMC::insert() {
+int DiagMC::insert() {
   stats(1,0) +=1;		//attempted
+  if(diag.propose_insert()!=0) {return -1;};
   stats(1,1) +=1;		//possible
-  diag.propose_insert();
-  
-  if (drnd() < ((Prem*diag.high_weigth()*diag.P_hilo())/(Pins*diag.low_weight()*diag.P_lohi()))) {
-    stats(1,3) +=1;
+  if (drnd() < ((Prem*diag.high_weight()*diag.P_hilo())/(Pins*diag.low_weight()*diag.P_lohi()))) {
+    stats(1,3) +=1;		//accepted
     diag.insert();
   }
   else {
-    stats(1,2) +=1;
+    stats(1,2) +=1;		//rejected
   }
-    
+  
+  return 0;    
 }
 
 int DiagMC::remove() {
-  stats(2,0) +=1;		//attempted
+  stats(2,0) += 1;		//attempted
   if(diag.propose_remove()!=0) {return -1;};
   stats(2,1) +=1;		//possible
-  
-  if (drnd() < ((Pins*diag.low_weight()*diag.P_lohi())/(Prem*diag.high_weigth()*diag.P_hilo()))) {
-    stats(2,3) +=1;
+  //std::cout<< Pins << '\t' << diag.low_weight() << '\t' << diag.P_lohi() << '\t' << Prem <<'\t' << diag.high_weight() << '\t' << diag.P_hilo()<<std::endl;
+  if (drnd() < ((Pins*diag.low_weight()*diag.P_lohi())/(Prem*diag.high_weight()*diag.P_hilo()))) {
+    stats(2,3) +=1;		//accepted
     diag.remove();
   }
   else {
-    stats(1,2) +=1;
+    stats(2,2) +=1;
   }
     
   return 0;
@@ -63,15 +63,15 @@ int main() {
   pt::read_json("DiagMC_FP.json", config);
   
   DiagMC fp(config);
+  // check
   
   steady_clock::time_point time_begin = steady_clock::now();  //start time
   double nseconds;
   do {	
-	//initialize();	
 	for (int i=0; i<fp.Write_its; i++) {
 	  for (int j=0; j<fp.Test_its; j++) {
 		for (int k=0; k<fp.Meas_its; k++) {
-		  if (fp.drnd() < Prem) {
+		  if (fp.drnd() < fp.Prem) {
 			fp.remove();
 		  }
 		  else {
@@ -82,37 +82,13 @@ int main() {
 		}
 		fp.measure(j);
 	  }
-	  fp.test(i);
+	  fp.status();
+	  fp.test();
 	}
 	fp.status();
 	
 	fp.write();
 	
-	/*
-	stats(0,4)= stats(0,3)/stats(0,1);
-	stats(0,5)= stats(0,3)/stats(0,0);
-		
-	//Energy mean
-	mean(Data.col(0));
-	bin_ana(Data.col(0));
-	printmean("Energy");
-	
-	//Magnetization mean
-	mean(Data.col(1));
-	bin_ana(Data.col(1));
-	printmean("Magnetization");
-	
-	printstats();
-	
-	//Writing to file
-	Datatofile();
-	Stattofile();
-	  
-	cycle+=1;
-	*/
-
-	
-	//Time Check
 	steady_clock::time_point time_end = steady_clock::now();
 	steady_clock::duration time_span = time_end-time_begin;
 	nseconds = double(time_span.count()) * steady_clock::period::num / steady_clock::period::den;

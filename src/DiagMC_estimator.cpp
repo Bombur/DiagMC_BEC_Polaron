@@ -1,13 +1,5 @@
 #include "DiagMC.h"
 
-void DiagMC::status() {
-  //mean(Data);
-  //bin_ana(Data);
-  
-  //printmean();
-  printstats();
-}
-
 double DiagMC::mean(const VectorXd & measdata) {
   int N=measdata.size();
   anabuffer(0) = measdata.dot(VectorXd::Ones(N)) / N;

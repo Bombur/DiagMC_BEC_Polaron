@@ -11,6 +11,14 @@ class oor_Gp: public std::exception
   }
 };
 
+class oor_tau: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "tau is out of range!";
+  }
+};
+
 class data_empty: public std::exception
 {
   virtual const char* what() const throw()
@@ -52,21 +60,24 @@ class ins_rem: public std::exception
 };
 
 
-void DiagMC::test(const int & which) {
+void DiagMC::test() {
   try{
 	//Diagram
 	diag.test();
-		
+	
+	//tau
+	if (tau > taumax || tau < 0) {throw oor_tau();}
+	
 	//Weight Check and Green's Function
-	if (Data((int)drnd()*taubin, 1) == 0) {throw data_empty();}
+	//if (Data((int)(drnd()*taubin), 0) == 0) {throw data_empty();}
 	int CG0p = 0;
 	for (int i=0; i< taubin; i++) {
-	  if (Data(i, 1)< (Data(i, 2) + Data(i, 3) + Data(i, 4))) {throw  greenerr();}
-	  CG0p += Data(i, 2);	  
+	  if (Data(i, 0)< (Data(i, 1) + Data(i, 2) + Data(i, 3))) {throw  greenerr();}
+	  CG0p += Data(i, 1);	  
 	}
 	for (int i=0; i< taubin; i++) {
 	  double G0deltatau = (exp(-(E*i*taumax/taubin))/E) *(1 - exp(-E*(taumax/taubin)));
-	  if ((G0deltatau/G0p * CG0p) < (Data(i,2)-1) || (G0deltatau/G0p * CG0p) > (Data(i,2)+1)) {throw weight_check();}
+	  //if (fabs((G0deltatau/G0p * CG0p) - double(Data(i,1))) > 0.0000001 )  {throw weight_check();}
 	}
 	
 	//Statistics
