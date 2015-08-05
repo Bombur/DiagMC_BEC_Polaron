@@ -63,7 +63,7 @@ class DiagMC {
 	long long Statfile_pos;
 	
   public:
-	const double Prem, Pins;		//probabilities to choose remove or insert branch
+	const double Prem, Pins, Pct;		//probabilities to choose remove or insert branch
 	
 	//Random Function
 	std::function<double()> drnd;

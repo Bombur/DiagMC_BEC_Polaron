@@ -2,6 +2,13 @@
 
 namespace pt = boost::property_tree;
 
+class oor_Probs: public std::exception {
+  virtual const char* what() const throw()
+  {
+    return "The Probabilities do not add up to 1!";
+  }
+};
+
 class openwritefile: public std::exception {
   virtual const char* what() const throw()
   {
@@ -10,9 +17,12 @@ class openwritefile: public std::exception {
 };
 
 DiagMC::DiagMC(const pt::ptree & config):p(config.get<double>("Momentum")), mu(config.get<double>("Chemical_Potential")), taumax(config.get<double>("Tau_max")), taubin(config.get<double>("Tau_bin")), 
-										Prem(config.get<double>("Remove_Probability")), Pins(config.get<double>("Insert_Probability")), alpha(config.get<double>("Coupling_Strength")), omegap(config.get<double>("Omega_Phonon")),
+										Prem(config.get<double>("Remove_Probability")), Pins(config.get<double>("Insert_Probability")), Pct(config.get<double>("Change_tau_Probability")),
+										alpha(config.get<double>("Coupling_Strength")), omegap(config.get<double>("Omega_Phonon")),
 										Meas_its(config.get<int>("Its_per_Measure")), Test_its(config.get<int>("Its_per_Test")), Write_its(config.get<int>("Its_per_Write")), RunTime(config.get<int>("RunTime")) { 
   try{
+	if (fabs(1-Prem-Pins-Pct) > 0.0000001) {throw oor_Probs();}
+	
 	E = pow(p,2)/2 - mu;
 	G0p = (1-exp(-E*taumax))/E;
 	tau = config.get<double>("Tau_start");

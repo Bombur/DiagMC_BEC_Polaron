@@ -240,6 +240,14 @@ void Diagram::remove() {
 
 }
 
+int Diagram::set_tau(double tau) {
+  if (tau < times[2*get_order()][0]) {return -1;}
+  times[2*get_order()+1][0] = tau;
+  
+  return 0;
+}
+
+
 class dnf_diagvec: public std::exception
 {
   virtual const char* what() const throw()
@@ -292,7 +300,7 @@ class propopen: public std::exception
 
 void Diagram::test() {
   try {
-	printall();
+	//printall();
 	if (times.size() != (2*get_order())+2) {throw dnf_vecsize();}
 	if (phprop.size() != times.size()-1) {throw dnf_vecsize();}
 	if (elprop.size() != phprop.size()) {throw dnf_vecsize();}
@@ -322,7 +330,6 @@ void Diagram::test() {
 	}
 	
 	for (int i=0; i<(2*get_order())+2; i++) {
-	  
 	  if ((int)(tmp(i)+0.5) != 1) {throw propopen();}
 	}
   } catch (std::exception& e) {

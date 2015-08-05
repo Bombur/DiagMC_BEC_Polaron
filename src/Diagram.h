@@ -57,18 +57,23 @@ class Diagram {
 	std::vector<double> get_q(int arc) {return phprop[arc];}
 	std::vector<double> get_p(int arc) {return elprop[arc];} 
 	
+	//proposing
 	void random_arc();
 	int propose_insert();
 	int propose_remove();
 	
+	//weights
 	double high_weight();
 	double low_weight();
 	double P_lohi();
 	double P_hilo();
 	
+	//changes
 	void insert();
 	void remove();
+	int set_tau(double tau);
 	
+	//tests
 	void test();
 	void printall();
 	

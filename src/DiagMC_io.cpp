@@ -26,7 +26,7 @@ void DiagMC::write() {
 	int CG0p = 0;
 	for (int i=0; i< taubin; i++) {
 	  CG0p += Data(i, 1);
-	  output(i, 0) = i*taumax/taubin;
+	  output(i, 0) = (i+0.5)*taumax/taubin;
 	}
 	output.rightCols(4)=Data.cast<double>()*(G0p/CG0p);
 	
@@ -72,8 +72,9 @@ void DiagMC::printmean() {
 
 void DiagMC::printstats() {
   std::cout <<'\n'<< "*************************************" << std::endl;
-  std::cout << "1:ATTEMPTED" << '\n' << "2:POSSIBLE" << '\n' << "3:REJECTED" << '\n' << "4:ACCEPTED" << '\n' << "5:ACCEPTANCE RATIO POSSIBLE" << '\n' << "6:ACCEPTANCE RATIO TOTAL" << '\n';
-  std::cout << "Change of tau: " << stats.topRows(1) << '\n' << "Insert: " << stats.block(1, 0, 1, 6) << '\n' << "Remove: " << stats.block(2, 0, 1, 6) << '\n' <<std::endl;
+  std::cout << "COLUMNS" << '\n' << "1:ATTEMPTED" << '\n' << "2:POSSIBLE" << '\n' << "3:REJECTED" << '\n' << "4:ACCEPTED" << '\n' << "5:ACCEPTANCE RATIO POSSIBLE" << '\n' << "6:ACCEPTANCE RATIO TOTAL" << '\n';
+  std::cout << "*************************************" << std::endl;
+  std::cout << "CHANGE OF TAU: " << '\t' << stats.topRows(1) << '\n' << "INSERT: " << '\t' << stats.block(1, 0, 1, 6) << '\n' << "REMOVE: " << '\t' << stats.block(2, 0, 1, 6) << '\n' <<std::endl;
 }
 
 /*

@@ -10,6 +10,12 @@
 namespace pt = boost::property_tree;
 using namespace std::chrono;
 
+class oor_Probs: public std::exception {
+  virtual const char* what() const throw()
+  {
+    return "Not possible branch chosen";
+  }
+};
 
 void DiagMC::change_tau() {
   double ntau = - log(drnd())/E;		//new tau
@@ -17,12 +23,11 @@ void DiagMC::change_tau() {
   stats(0,0) +=1;						//attempted
     
   if (ntau < taumax) {
-	stats(0,1) +=1;						//possible
-	stats(0,3) +=1;						//accepted
-	tau = ntau;
-  }
-  else {
-	stats(0,2) +=1;						//rejected
+	if (diag.set_tau(ntau) == 0) {
+	  stats(0,1) +=1;						//possible
+	  stats(0,3) +=1;						//accepted
+	  tau = ntau;
+	}
   }
 }
 
@@ -59,42 +64,49 @@ int DiagMC::remove() {
 
 
 int main() {
-  pt::ptree config;
-  pt::read_json("DiagMC_FP.json", config);
+  try{
+	
+	pt::ptree config;
+	pt::read_json("DiagMC_FP.json", config);
   
-  DiagMC fp(config);
-  // check
+	DiagMC fp(config);
   
-  steady_clock::time_point time_begin = steady_clock::now();  //start time
-  double nseconds;
-  do {	
-	for (int i=0; i<fp.Write_its; i++) {
-	  for (int j=0; j<fp.Test_its; j++) {
-		for (int k=0; k<fp.Meas_its; k++) {
-		  if (fp.drnd() < fp.Prem) {
-			fp.remove();
+	steady_clock::time_point time_begin = steady_clock::now();  //start time
+	double nseconds;
+	do {	
+	  for (int i=0; i<fp.Write_its; i++) {
+		for (int j=0; j<fp.Test_its; j++) {
+		  for (int k=0; k<fp.Meas_its; k++) {
+			double action = fp.drnd();
+			if (action < fp.Prem) {
+			  fp.remove();
+			}
+			else if ((action-fp.Prem)<fp.Pins) {
+			  fp.insert();			  
+			}
+			else if ((action-fp.Prem-fp.Pins) < fp.Pct) {
+			  fp.change_tau();
+			}
+			else {throw oor_Probs();}
 		  }
-		  else {
-			fp.insert();			  
-		  }
-		  
-		  //fp.change_tau();
+		  fp.measure(j);
 		}
-		fp.measure(j);
+		fp.test();
 	  }
 	  fp.status();
-	  fp.test();
-	}
-	fp.status();
 	
-	fp.write();
+	  fp.write();
 	
-	steady_clock::time_point time_end = steady_clock::now();
-	steady_clock::duration time_span = time_end-time_begin;
-	nseconds = double(time_span.count()) * steady_clock::period::num / steady_clock::period::den;
-  } while (nseconds < fp.RunTime);
+	  steady_clock::time_point time_end = steady_clock::now();
+	  steady_clock::duration time_span = time_end-time_begin;
+	  nseconds = double(time_span.count()) * steady_clock::period::num / steady_clock::period::den;
+	} while (nseconds < fp.RunTime);
   
-  return 0;
+	return 0;
+  } catch (std::exception& e){
+	std::cerr << e.what() << std::endl;
+	exit(EXIT_FAILURE);
+  }
 }
 
 
