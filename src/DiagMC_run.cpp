@@ -41,8 +41,7 @@ int DiagMC::insert() {
   }
   else {
     stats(1,2) +=1;		//rejected
-  }
-  
+  }  
   return 0;    
 }
 
@@ -82,7 +81,7 @@ int main() {
 			  fp.remove();
 			}
 			else if ((action-fp.Prem)<fp.Pins) {
-			  fp.insert();			  
+			  fp.insert();
 			}
 			else if ((action-fp.Prem-fp.Pins) < fp.Pct) {
 			  fp.change_tau();
@@ -91,6 +90,7 @@ int main() {
 		  }
 		  fp.measure(j);
 		}
+		//fp.status();
 		fp.test();
 	  }
 	  fp.status();

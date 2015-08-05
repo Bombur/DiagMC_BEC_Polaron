@@ -77,8 +77,8 @@ void DiagMC::test() {
 	}
 	for (int i=0; i< taubin; i++) {
 	  double G0deltatau = (exp(-(E*i*taumax/taubin))/E) *(1 - exp(-E*(taumax/taubin)));
-	  std::cout << (G0deltatau/G0p * CG0p)<<'\t' << double(Data(i,1)) << '\t' << fabs((G0deltatau/G0p * CG0p) - double(Data(i,1))) << std::endl;
-	  if (((G0deltatau/G0p) * CG0p) > 10000 && fabs((G0deltatau/G0p * CG0p) - double(Data(i,1))) > 0.5*(G0deltatau/G0p) * CG0p )  {throw weight_check();}
+	  //std::cout << (G0deltatau/G0p * CG0p)<<'\t' << double(Data(i,1)) << '\t' << fabs((G0deltatau/G0p * CG0p) - double(Data(i,1))) << std::endl;
+	  if (((G0deltatau/G0p) * CG0p) > 100 && fabs((G0deltatau/G0p * CG0p) - double(Data(i,1))) > 0.5*(G0deltatau/G0p) * CG0p )  {throw weight_check();}
 	  if (((G0deltatau/G0p) * CG0p) > 1000 && fabs((G0deltatau/G0p * CG0p) - double(Data(i,1))) > 0.16*(G0deltatau/G0p) * CG0p )  {throw weight_check();}
 	  if (((G0deltatau/G0p) * CG0p) > 10000 && fabs((G0deltatau/G0p * CG0p) - double(Data(i,1))) > 0.05*(G0deltatau/G0p) * CG0p )  {throw weight_check();}
 	  if (((G0deltatau/G0p) * CG0p) > 100000 && fabs((G0deltatau/G0p * CG0p) - double(Data(i,1))) > 0.016*(G0deltatau/G0p) * CG0p )  {throw weight_check();}

@@ -16,6 +16,9 @@ class no_propose: public std::exception
   }
 };
 
+
+//Basic Vector operations
+
 std::vector<double> operator+(const std::vector<double> & vec1, const std::vector<double> & vec2){
   try {
 	if (vec1.size() != vec2.size()) {throw dnf_vecsize();}
@@ -59,6 +62,12 @@ double square(const std::vector<double> & vec1){
 	exit(EXIT_FAILURE);
   }
 }
+
+
+
+
+//Definitions of Diagramm class
+
 Diagram::Diagram() {
   order=0;
   
@@ -122,7 +131,7 @@ void Diagram::random_arc() {
 int Diagram::propose_insert() {
   try{
 	random_arc();										//arc to insert
-	if (order != 0) {return -2;}						//step 2 just 1st order allowed
+	if (order != 0 && order !=1) {return -2;}						//step 2 just 1st order allowed
 	
 	pr_tauin = get_tinit(pr_arc);			
 	pr_taufin = get_tfin(pr_arc);
@@ -170,9 +179,6 @@ int Diagram::propose_remove() {
   }
 }
 
-
-
-
 double Diagram::high_weight() {
   return (alpha*exp(((square(pr_p-pr_q)/2) - mu)*(pr_tau1[0]-pr_tau2[0]) - wp*(pr_tau2[0]-pr_tau1[0])) / square(pr_q));
 }
@@ -196,19 +202,21 @@ void Diagram::insert() {
 	std::vector< std::vector<double> >::iterator pit = phprop.begin() + pr_arc;
 	std::vector< std::vector<double> >::iterator eit = elprop.begin() + pr_arc;
 	
-	times.insert(tit+1, pr_tau1);										//insert tau1 and tau2
-	times.insert(tit+2, pr_tau2);
-	for (int i = 0; i<pr_arc+1; i++) {
+	for (int i = 0; i<((2*get_order())+1); i++) {
 	  if ((int)(times[i][1]+0.5) > pr_arc) {times[i][1] +=2;}
 	}
+	times.insert(tit+1, pr_tau1);										//insert tau1 and tau2
+	times.insert(tit+2, pr_tau2);
+	
 	
 	phprop.insert(pit+1, std::move(pr_q + get_q(pr_arc)));							//insert q+oldq in arc+1
 	phprop.insert(pit+2, std::move(get_q(pr_arc)));								//insert oldq in arc+2
 	
-	elprop.insert(eit+1, std::move(get_p(pr_arc) - get_q(pr_arc+1)));					//insert oldp-q in arc+1
+	elprop.insert(eit+1, std::move(get_p(pr_arc) - pr_q));					//insert oldp-q in arc+1
 	elprop.insert(eit+2, std::move(get_p(pr_arc)));								//insert oldp in arc+2	  
  
 	order+=1;
+
   }	catch (std::exception& e) {
 	std::cerr << e.what() << std::endl;
 	exit(EXIT_FAILURE);
@@ -219,20 +227,22 @@ void Diagram::insert() {
 void Diagram::remove() {
    try{
     if (pr_tau1.empty() || pr_tau2.empty() || pr_q.empty()) {throw no_propose();}
-      std::vector< std::vector<double> >::iterator tit = times.begin() + pr_arc;		//iterators for different matrices
-      std::vector< std::vector<double> >::iterator pit = phprop.begin() + pr_arc;
-      std::vector< std::vector<double> >::iterator eit = elprop.begin() + pr_arc;
+	std::vector< std::vector<double> >::iterator tit = times.begin() + pr_arc;		//iterators for different matrices
+    std::vector< std::vector<double> >::iterator pit = phprop.begin() + pr_arc;
+	std::vector< std::vector<double> >::iterator eit = elprop.begin() + pr_arc;
 	  
-	  for (int i = 0; i<pr_arc; i++) {
-		if ((int)(times[i][1]+0.5) > pr_arc) {times[i][1] -=2;}
-	  }
-	  times.erase(tit, tit+2);	  
+	times.erase(tit, tit+2);	  
 	
-      phprop.erase(pit, pit+2);
+	phprop.erase(pit, pit+2);
       
-      elprop.erase(eit, eit+2);  
+	elprop.erase(eit, eit+2);  
   
-      order-=1;
+	order-=1;
+	  
+	for (int i = 0; i<((2*get_order())+1); i++) {
+	  if ((int)(times[i][1]+0.5) > pr_arc) {times[i][1] -=2;}
+	}
+	
   } catch (std::exception& e) {
       std::cerr << e.what() << std::endl;
       exit(EXIT_FAILURE);
@@ -247,6 +257,15 @@ int Diagram::set_tau(double tau) {
   return 0;
 }
 
+
+
+
+
+
+
+
+
+//Errors for Testing
 
 class dnf_diagvec: public std::exception
 {
