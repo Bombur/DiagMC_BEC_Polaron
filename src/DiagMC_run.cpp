@@ -13,7 +13,7 @@ using namespace std::chrono;
 class oor_Probs: public std::exception {
   virtual const char* what() const throw()
   {
-    return "Not possible branch chosen";
+    return "No possible action chosen";
   }
 };
 
@@ -55,9 +55,60 @@ int DiagMC::remove() {
     diag.remove();
   }
   else {
-    stats(2,2) +=1;
+    stats(2,2) +=1;		//rejected
   }
     
+  return 0;
+}
+
+int DiagMC::swap() {
+  stats(3,0) += 1; //attempted
+  stats(4,0) += 1;
+  stats(5,0) += 1;
+  stats(6,0) += 1;
+  int which = diag.propose_swap();
+  if (which == -1) {return -1;} //not possible
+  
+  // both vertices are open or closed
+  if (which == 0) {
+	stats(4,1) +=1; //possible
+	if (drnd() < (diag.G0el(diag.get_prp())/diag.G0el(diag.get_p()))) {
+	  stats(4,3) +=1; //accepted
+	  diag.swap();
+	}
+	else {
+	  stats(4,2)+= 1; 	// rejected
+	}
+  }
+  
+  // first vertex is start point, second one is end point 
+  if (which == -2) {
+	stats(5,1) +=1; //possible
+	if (drnd() < (diag.G0el(diag.get_prp())/diag.G0el(diag.get_p())) * diag.Dph(double(which))) {
+	  stats(5,3) +=1; //accepted
+	  diag.swap();
+	}
+	else {
+	  stats(5,2)+= 1; 	// rejected
+	}
+  }
+  
+   // first vertex is end point, second one is start point 
+  if (which == 2) {
+	stats(6,1) +=1; //possible
+	if (drnd() < (diag.G0el(diag.get_prp())/diag.G0el(diag.get_p())) * diag.Dph(double(which))) {
+	  stats(6,3) +=1; //accepted
+	  diag.swap();
+	}
+	else {
+	  stats(6,2)+= 1; 	// rejected
+	}
+  } 
+  
+  for (int i =1 ; i<4 ; i++){
+	stats(3,i) = stats(4,i) + stats(5,i) + stats(6,i);
+  }
+  
   return 0;
 }
 
@@ -86,11 +137,16 @@ int main() {
 			else if ((action-fp.Prem-fp.Pins) < fp.Pct) {
 			  fp.change_tau();
 			}
-			else {throw oor_Probs();}
+			else if ((action- fp.Prem- fp.Pins - fp.Pct) < fp.Psw) {
+			  fp.swap();
+			}
+			else {
+			  throw oor_Probs();
+			}
 		  }
 		  fp.measure(j);
 		}
-		//fp.status();
+		fp.status();
 		fp.test();
 	  }
 	  fp.status();
@@ -101,7 +157,9 @@ int main() {
 	  steady_clock::duration time_span = time_end-time_begin;
 	  nseconds = double(time_span.count()) * steady_clock::period::num / steady_clock::period::den;
 	} while (nseconds < fp.RunTime);
-  
+	
+	fp.Stattofile();
+	
 	return 0;
   } catch (std::exception& e){
 	std::cerr << e.what() << std::endl;

@@ -48,30 +48,38 @@ class Diagram {
   
   public:
 	Diagram();
-	Diagram(double p, double tau, double my, double omega, double alph, std::function<double()> rnd);
-	void set(double p, double tau, double my, double omega, double alph, std::function<double()> rnd);
+	Diagram(const double & p, const double & tau, const double & my, const double & omega, const double & alph, const std::function<double()> & rnd);
+	void set(const double & p, const double & tau, const double & my, const double & omega, const double & alph, const std::function<double()> & rnd);
 	
-	int get_order() {return order;};
-	double get_tinit(int arc) {return times[arc][0];};
-	double get_tfin(int arc) {return times[arc+1][0];};
-	std::vector<double> get_q(int arc) {return phprop[arc];}
-	std::vector<double> get_p(int arc) {return elprop[arc];} 
+	int get_order() {return order;}
+	double get_tinit(const int & arc) {return times[arc][0];}
+	double get_tfin(const int & arc) {return times[arc+1][0];}
+	std::vector<double> get_q(const int & arc) {return phprop[arc];}
+	std::vector<double> get_p(const int & arc) {return elprop[arc];}
+	
+	//just for swap
+	std::vector<double> get_p() {return elprop[pr_arc];}
+	std::vector<double> get_prp() {return pr_p;} 
 	
 	//proposing
 	void random_arc();
 	int propose_insert();
 	int propose_remove();
+	int propose_swap();
 	
 	//weights
 	double high_weight();
 	double low_weight();
 	double P_lohi();
 	double P_hilo();
+	double G0el(const std::vector<double> &);
+	double Dph(const double & factor);
 	
 	//changes
 	void insert();
 	void remove();
 	int set_tau(double tau);
+	void swap();
 	
 	//tests
 	void test();

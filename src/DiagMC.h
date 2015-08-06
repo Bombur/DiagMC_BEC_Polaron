@@ -52,8 +52,8 @@ class DiagMC {
 	int binl;						//binning length
 	Vector3d anabuffer;				//0:mean, 1:binning error, 2:integrated correlation time
 	
-	//rows of stats: 0:change tau, 1:insert, 2:remove
-	Matrix<double,4,6>  stats; 		//0:attempted, 1:possible, 2:rejected, 3:accepted, 4:acceptance ratio possible, 5:acceptance ratio total
+	//rows of stats: 0:change tau, 1:insert, 2:remove 3:swap, 4:swapoocc, 5:swapoc, 6:swapco,
+	Matrix<double,7,6>  stats; 		//0:attempted, 1:possible, 2:rejected, 3:accepted, 4:acceptance ratio possible, 5:acceptance ratio total
 	
 	//io variables
 	std::string path;
@@ -63,7 +63,7 @@ class DiagMC {
 	long long Statfile_pos;
 	
   public:
-	const double Prem, Pins, Pct;		//probabilities to choose remove or insert branch
+	const double Prem, Pins, Pct, Psw;		//probabilities to choose remove or insert branch
 	
 	//Random Function
 	std::function<double()> drnd;
@@ -80,6 +80,7 @@ class DiagMC {
 	void change_tau();
 	int insert();
 	int remove();
+	int swap();
 	
 	//DiagMC_updates.cpp
 	int get_order() {return diag.get_order();};

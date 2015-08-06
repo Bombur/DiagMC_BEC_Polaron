@@ -89,7 +89,7 @@ Diagram::Diagram() {
   pr_p.assign(3, 0);
 }
 
-Diagram::Diagram(double p, double tau, double my, double omega, double alph, std::function<double()> rnd): mu(my), wp(omega), alpha(alph), order(0), drnd(rnd) {
+Diagram::Diagram(const double & p, const double & tau, const double & my, const double & omega, const double & alph, const std::function<double()> & rnd): mu(my), wp(omega), alpha(alph), order(0), drnd(rnd) {
   times.reserve(50);
   times.assign(2, std::vector<double>(2, 0));
   times[0][1] = 1;
@@ -111,7 +111,7 @@ Diagram::Diagram(double p, double tau, double my, double omega, double alph, std
   pr_p.assign(3, 0);
 }
 
-void Diagram::set(double p, double tau, double my, double omega, double alph, std::function<double()> rnd) {
+void Diagram::set(const double & p, const double & tau, const double & my, const double & omega, const double & alph, const std::function<double()> & rnd) {
   mu = my;
   wp = omega;
   alpha = alph;
@@ -156,10 +156,10 @@ int Diagram::propose_insert() {
 
 int Diagram::propose_remove() {
   try{
-	random_arc();	//arc to insert
+	random_arc();	//arc to remove
 	if (pr_arc != (int)(times[pr_arc+1][1]+0.5)) {
 	  return -1;}
-	if (order == 0) {return -2;}
+	if (get_order() == 0) {return -1;}
 	
 	pr_tauin = get_tinit(pr_arc-1);
 	pr_taufin = get_tfin(pr_arc+1);
@@ -179,6 +179,35 @@ int Diagram::propose_remove() {
   }
 }
 
+int Diagram::propose_swap() {
+  random_arc();
+  if (get_order() == 0) {return -1;}
+  if (pr_arc == 0 || (int)(times[pr_arc+1][1]+0.5) == 0) {return -1;}
+  if ((int)(times[pr_arc][1]+0.5) == (pr_arc+1)) {return -1;}
+  
+  pr_tauin = get_tinit(pr_arc);
+  pr_taufin = get_tfin(pr_arc);
+  
+  pr_tau1.assign(2,0);
+  pr_tau2.assign(2,0);
+  pr_q.assign(3,0);	
+  
+  //std::cout << get_p(pr_arc) << '\t' << get_q(pr_arc) << '\t' << get_q(pr_arc-1) << '\t' << get_p(pr_arc) << '\t' <<
+  
+  pr_p = get_p(pr_arc)+ get_q(pr_arc) + get_q(pr_arc) - get_q(pr_arc-1) -get_q(pr_arc +1); //pnew
+  
+  if ((((int)(times[pr_arc][1]+0.5)) > pr_arc) && (((int)(times[pr_arc+1][1]+0.5)) < pr_arc + 1) ) {
+	return -2;
+  }
+  else if ((((int)(times[pr_arc][1]+0.5)) < pr_arc) && (((int)(times[pr_arc+1][1]+0.5)) > pr_arc + 1) ) {
+	return 2;
+  }
+  else {
+	return 0;		//wp tilde
+  }
+}
+
+
 double Diagram::high_weight() {
   return (alpha*exp(((square(pr_p-pr_q)/2) - mu)*(pr_tau1[0]-pr_tau2[0]) - wp*(pr_tau2[0]-pr_tau1[0])) / square(pr_q));
 }
@@ -193,6 +222,14 @@ double Diagram::P_hilo(){
 
 double Diagram::P_lohi(){
   return (1/(2*double(get_order())+1) /(pr_taufin-pr_tauin) /(pr_taufin-pr_tau1[0]) *pow((pr_tau2[0]-pr_tau1[0])/2/M_PI, 3/2) * exp((square(pr_q)/2) *(pr_tau1[0]-pr_tau2[0])));
+}
+
+double Diagram::G0el(const std::vector< double > & p) {
+  return exp(-(square(p)/2 - mu)*(pr_taufin-pr_tauin));
+}
+
+double Diagram::Dph(const double & factor) {
+  return exp((-wp)*factor*(pr_taufin-pr_tauin));
 }
 
 void Diagram::insert() {
@@ -257,6 +294,22 @@ int Diagram::set_tau(double tau) {
   return 0;
 }
 
+void Diagram::swap() {
+  double tmp = times[(int)(times[pr_arc][1]+0.5)][1];
+  times[(int)(times[pr_arc][1]+0.5)][1] = times[(int)(times[pr_arc+1][1]+0.5)][1];
+  times[(int)(times[pr_arc+1][1]+0.5)][1] = tmp;
+  
+  tmp = times[pr_arc][1];			//swap links
+  times[pr_arc][1] = times[pr_arc+1][1];
+  times[pr_arc+1][1] = tmp;
+  
+  
+  
+  phprop[pr_arc] = (get_q(pr_arc-1) + get_q(pr_arc+1) - get_q(pr_arc));
+  
+  elprop[pr_arc] = pr_p;
+
+}
 
 
 
@@ -319,7 +372,7 @@ class propopen: public std::exception
 
 void Diagram::test() {
   try {
-	//printall();
+	printall();
 	if (times.size() != (2*get_order())+2) {throw dnf_vecsize();}
 	if (phprop.size() != times.size()-1) {throw dnf_vecsize();}
 	if (elprop.size() != phprop.size()) {throw dnf_vecsize();}
