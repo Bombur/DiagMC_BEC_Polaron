@@ -22,9 +22,9 @@ WARNINGS = -Wall -Wextra -Wpointer-arith  -Wcast-qual -Wcast-align \
  -Wvolatile-register-var -Wwrite-strings -Wextra -Wfloat-equal \
  -Wredundant-decls -Wconversion -Wno-unused-parameter
  
-#CFLAGS= -O3 -funroll-all-loops -ffast-math $(WARNINGS)
+CFLAGS= -O0 -funroll-all-loops -ffast-math $(WARNINGS)
 #CFLAGS = $(WARNINGS)
-CFLAGS= -O3 -funroll-all-loops -ffast-math
+#CFLAGS= -O3 -funroll-all-loops -ffast-math
 
 LDFLAGS= 
 

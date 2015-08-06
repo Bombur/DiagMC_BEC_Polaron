@@ -31,9 +31,27 @@ void DiagMC::change_tau() {
   }
 }
 
+int DiagMC::ct_ho(){
+  stats(7,0) +=1;		//attempted
+  int which = diag.propose_ct();
+  if(diag.propose_ct()!=0) {return -1;}  
+  
+  
+  stats(7,1) +=1;		//possible
+  if (drnd() < (diag.G0el(diag.get_p())/(diag.G0el(diag.get_prp()) * diag.Dph(1)))) {
+    stats(7,3) +=1;		//accepted
+    tau = diag.ct();
+  }
+  else {
+    stats(7,2) +=1;		//rejected
+  }  
+  
+  return 0; 
+}
+
 int DiagMC::insert() {
   stats(1,0) +=1;		//attempted
-  if(diag.propose_insert()!=0) {return -1;};
+  if(diag.propose_insert()!=0) {return -1;}
   stats(1,1) +=1;		//possible
   if (drnd() < ((Prem*diag.high_weight()*diag.P_hilo())/(Pins*diag.low_weight()*diag.P_lohi()))) {
     stats(1,3) +=1;		//accepted
@@ -47,7 +65,7 @@ int DiagMC::insert() {
 
 int DiagMC::remove() {
   stats(2,0) += 1;		//attempted
-  if(diag.propose_remove()!=0) {return -1;};
+  if(diag.propose_remove()!=0) {return -1;}
   stats(2,1) +=1;		//possible
   //std::cout<< Pins << '\t' << diag.low_weight() << '\t' << diag.P_lohi() << '\t' << Prem <<'\t' << diag.high_weight() << '\t' << diag.P_hilo()<<std::endl;
   if (drnd() < ((Pins*diag.low_weight()*diag.P_lohi())/(Prem*diag.high_weight()*diag.P_hilo()))) {
@@ -129,24 +147,37 @@ int main() {
 		  for (int k=0; k<fp.Meas_its; k++) {
 			double action = fp.drnd();
 			if (action < fp.Prem) {
+			  //std::cout<<j<< "rem" <<std::endl;
 			  fp.remove();
+			  //std::cout<<j<< "rem" <<std::endl;
 			}
 			else if ((action-fp.Prem)<fp.Pins) {
+			  //std::cout<<j<< "ins" <<std::endl;
 			  fp.insert();
+			  //std::cout<<j<< "ins" <<std::endl;
 			}
 			else if ((action-fp.Prem-fp.Pins) < fp.Pct) {
-			  fp.change_tau();
+			  std::cout<<j<< "ct" <<std::endl;
+			  
+			  //fp.change_tau();  		//old change tau
+			  
+			  fp.ct_ho();		//change taus in higher order
+			  
+			  std::cout<<j<< "ct" <<std::endl;
 			}
 			else if ((action- fp.Prem- fp.Pins - fp.Pct) < fp.Psw) {
+			  //std::cout<<j<< "sw" <<std::endl;
 			  fp.swap();
+			  //std::cout<<j<< "sw" <<std::endl;
 			}
-			else {
+			else { 
 			  throw oor_Probs();
 			}
+			
 		  }
 		  fp.measure(j);
 		}
-		fp.status();
+		//fp.status();
 		fp.test();
 	  }
 	  fp.status();

@@ -7,7 +7,7 @@ class oor_Probs: public std::exception {
   {
     return "The Probabilities do not add up to 1!";
   }
-};
+}; 
 
 class openwritefile: public std::exception {
   virtual const char* what() const throw()

@@ -10,7 +10,7 @@ void Ising_markov_method::initialize() {
   stats.setZero(0,6);
 }
 
-*/
+*/ 
 
 void DiagMC::change_tau() {
   double ntau = - ln(drnd())/E;			//new tau

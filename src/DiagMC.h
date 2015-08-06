@@ -52,8 +52,8 @@ class DiagMC {
 	int binl;						//binning length
 	Vector3d anabuffer;				//0:mean, 1:binning error, 2:integrated correlation time
 	
-	//rows of stats: 0:change tau, 1:insert, 2:remove 3:swap, 4:swapoocc, 5:swapoc, 6:swapco,
-	Matrix<double,7,6>  stats; 		//0:attempted, 1:possible, 2:rejected, 3:accepted, 4:acceptance ratio possible, 5:acceptance ratio total
+	//rows of stats: 0:change tau, 1:insert, 2:remove 3:swap, 4:swapoocc, 5:swapoc, 6:swapco, 7:ct_ho
+	Matrix<double,8,6>  stats; 		//0:attempted, 1:possible, 2:rejected, 3:accepted, 4:acceptance ratio possible, 5:acceptance ratio total
 	
 	//io variables
 	std::string path;
@@ -78,6 +78,7 @@ class DiagMC {
 
 	//DiagMC_run.cpp
 	void change_tau();
+	int ct_ho();			//change taus in higher orders
 	int insert();
 	int remove();
 	int swap();

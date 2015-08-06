@@ -66,6 +66,7 @@ class Diagram {
 	int propose_insert();
 	int propose_remove();
 	int propose_swap();
+	int propose_ct();
 	
 	//weights
 	double high_weight();
@@ -80,6 +81,7 @@ class Diagram {
 	void remove();
 	int set_tau(double tau);
 	void swap();
+	double ct();
 	
 	//tests
 	void test();

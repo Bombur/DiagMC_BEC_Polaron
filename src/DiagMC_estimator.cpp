@@ -4,7 +4,7 @@ double DiagMC::mean(const VectorXd & measdata) {
   int N=measdata.size();
   anabuffer(0) = measdata.dot(VectorXd::Ones(N)) / N;
   return anabuffer(0);
-}
+} 
 
 void DiagMC::bin_ana(const VectorXd & measdata) {
   int N = measdata.size();
