@@ -14,7 +14,7 @@ WARNINGS = -Wall -Wextra -Wpointer-arith  -Wcast-qual -Wcast-align \
  -Winvalid-pch -Wunsafe-loop-optimizations -Wmissing-braces \
  -Wmissing-field-initializers -Wmissing-format-attribute \
  -Wmissing-include-dirs -Wmissing-noreturn -Wpacked -Wparentheses \
- -Wreturn-type -Wsequence-point -Wshadow -Wsign-compare \
+ -Wreturn-type -Wsequence-point  -Wsign-compare \
  -Wstack-protector -Wstrict-aliasing -Wstrict-aliasing=2 -Wswitch \
  -Wswitch-default -Wswitch-enum -Wtrigraphs -Wuninitialized \
  -Wunknown-pragmas -Wunreachable-code -Wunused -Wunused-function \
@@ -25,20 +25,22 @@ WARNINGS = -Wall -Wextra -Wpointer-arith  -Wcast-qual -Wcast-align \
 CFLAGS= -O0 -funroll-all-loops -ffast-math $(WARNINGS)
 #CFLAGS = $(WARNINGS)
 #CFLAGS= -O3 -funroll-all-loops -ffast-math
+#CFLAGS = -pg
 
 LDFLAGS= 
+#LDFLAGS= -pg
 
 #Include Path
 INC=/project/theorie/h/H.Guertner/lib
 
 #Sources
-SOURCE=DiagMC_run.cpp DiagMC_config.cpp DiagMC_io.cpp DiagMC_updates.cpp DiagMC_estimator.cpp DiagMC_test.cpp Diagram.cpp
+SOURCE=dvector.cpp DiagMC_run.cpp DiagMC.cpp DiagMC_config.cpp DiagMC_io.cpp DiagMC_updates.cpp DiagMC_estimator.cpp DiagMC_test.cpp Diagram_test.cpp Diagram.cpp
 
 #Objects
 OBJ= $(SOURCE:.cpp=.o)
 
 #Header
-DEPS= DiagMC.h Diagram.h
+DEPS= DiagMC.h Diagram.h dvector.h
 
 #Executeable
 EXE= ../../DiagMC_FP

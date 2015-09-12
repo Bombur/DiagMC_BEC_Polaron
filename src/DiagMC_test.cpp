@@ -1,7 +1,7 @@
 #include <exception>
 #include <stdexcept>
 #include "DiagMC.h"
-  
+   
 //tests
 class oor_Gp: public std::exception
 {
@@ -66,7 +66,7 @@ void DiagMC::test() {
 	diag.test(); 
 	
 	//tau
-	if (tau > taumax || tau < 0) {throw oor_tau();}
+	if (diag.get_tau() > taumax || diag.get_tau() < 0) {throw oor_tau();}
 	
 	//Weight Check and Green's Function
 	//if (Data((int)(drnd()*taubin), 0) == 0) {throw data_empty();}
@@ -85,9 +85,9 @@ void DiagMC::test() {
 	}
 	//Statistics
 	for (int i = 0; i< 4; i++) {
-	  if (stats(i,1) != stats(i,2)+stats(i, 3)) {throw staterr();}
+	  if (fabs(updatestat(i,1)- updatestat(i,2) -updatestat(i, 3)) >  0.001) {throw staterr();}
 	}
-	if (stats(1,3) <stats(2,3)) {throw ins_rem();}
+	if (updatestat(1,3) <updatestat(2,3)) {throw ins_rem();}
   }
   catch (std::exception& e){
 	std::cerr << e.what() << std::endl;

@@ -7,7 +7,7 @@ class oor_Probs: public std::exception {
   {
     return "The Probabilities do not add up to 1!";
   }
-}; 
+};  
 
 class openwritefile: public std::exception {
   virtual const char* what() const throw()
@@ -16,20 +16,16 @@ class openwritefile: public std::exception {
   }
 };
 
-DiagMC::DiagMC(const pt::ptree & config):p(config.get<double>("Momentum")), mu(config.get<double>("Chemical_Potential")), taumax(config.get<double>("Tau_max")), taubin(config.get<double>("Tau_bin")), 
-										Prem(config.get<double>("Remove_Probability")), Pins(config.get<double>("Insert_Probability")), Pct(config.get<double>("Change_tau_Probability")), Psw(config.get<double>("Swap_Probability")),
+DiagMC::DiagMC(int & seed, const pt::ptree & config):p(config.get<double>("Momentum")), mu(config.get<double>("Chemical_Potential")), taumax(config.get<double>("Tau_max")), taubin(config.get<int>("Tau_bin")), ctcor(config.get<double>("Correction_tau")),  qcor(config.get<double>("Correction_dq")),  
+										Prem(config.get<double>("Remove_Probability")), Pins(config.get<double>("Insert_Probability")), Pct(config.get<double>("Change_tau_Probability")), Psw(config.get<double>("Swap_Probability")), Pdq(config.get<double>("DQ_Probability")),
 										alpha(config.get<double>("Coupling_Strength")), omegap(config.get<double>("Omega_Phonon")),
 										Meas_its(config.get<int>("Its_per_Measure")), Test_its(config.get<int>("Its_per_Test")), Write_its(config.get<int>("Its_per_Write")), RunTime(config.get<int>("RunTime")) { 
   try{
-	if (fabs(1-Prem-Pins-Pct - Psw) > 0.0000001) {throw oor_Probs();}
+	if (fabs(1-Prem-Pins-Pct - Pdq-Psw) > 0.0000001) {throw oor_Probs();}
 	
 	E = pow(p,2)/2 - mu;
 	G0p = (1-exp(-E*taumax))/E;
-	tau = config.get<double>("Tau_start");
   
-	//Seed for Random Number Generator
-	unsigned int seed = 1;
-
 	//Random Number Generator
 	std::mt19937 generator (seed);
 	std::uniform_real_distribution<double> uni_dist2(0,1);
@@ -37,26 +33,29 @@ DiagMC::DiagMC(const pt::ptree & config):p(config.get<double>("Momentum")), mu(c
 	
 	Data = MatrixXi::Zero(taubin, 4);
 	
-	diag.set(p, tau, mu, omegap, alpha, drnd);
+	diag.set(p, config.get<double>("Tau_start"), drnd);
   
-	binl=config.get<int>("Binning_Length");
-	anabuffer.setZero();
-	
-	stats.setZero();
+	updatestat = MatrixXd::Zero(9,6);
+	orderstat = VectorXi::Zero(40);
   
-	std::stringstream convert, convert2, convert3, convert4, convert5, convert6; //p, mu, taumax, alpha, wp, RunTime
+	std::stringstream convert, convert2, convert3, convert4, convert5, convert6, convert7; //p, mu, taumax, alpha, wp, RunTime
 	convert<<p;
 	convert2<<mu;
 	convert3<<taumax;
 	convert4<<alpha;
 	convert5<<omegap;
 	convert6<<RunTime;
+	convert7<<seed;
 	path=config.get<std::string>("Path");
-	Datafile.open(path+"data/Data_p_"+convert.str()+"_mu_"+convert2.str()+"_tmax_"+convert3.str()+"_a_"+convert4.str()+"_wp_"+convert5.str()+"_Run_Time_"+convert6.str()+".txt");
-	Statsfile.open(path+"data/Stat_p_"+convert.str()+"_mu_"+convert2.str()+"_tmax_"+convert3.str()+"_a_"+convert4.str()+"_wp_"+convert5.str()+"_Run_Time_"+convert6.str()+".txt");
-	if (!(Datafile.is_open() && Statsfile.is_open())) {throw openwritefile();}
+	Datafile.open(path+"data/Data_p_"+convert.str()+"_mu_"+convert2.str()+"_tmax_"+convert3.str()+"_a_"+convert4.str()+"_wp_"+convert5.str()+"_Run_Time_"+convert6.str()+"_core_"+convert7.str()+".txt");
+	udsfile.open(path+"data/udstat_p_"+convert.str()+"_mu_"+convert2.str()+"_tmax_"+convert3.str()+"_a_"+convert4.str()+"_wp_"+convert5.str()+"_Run_Time_"+convert6.str()+"_core_"+convert7.str()+".txt");
+	osfile.open(path+"data/ostat_p_"+convert.str()+"_mu_"+convert2.str()+"_tmax_"+convert3.str()+"_a_"+convert4.str()+"_wp_"+convert5.str()+"_Run_Time_"+convert6.str()+"_core_"+convert7.str()+".txt");
+	tsfile.open(path+"data/tstat_p_"+convert.str()+"_mu_"+convert2.str()+"_tmax_"+convert3.str()+"_a_"+convert4.str()+"_wp_"+convert5.str()+"_Run_Time_"+convert6.str()+"_core_"+convert7.str()+".txt");
+	if (!(Datafile.is_open() && udsfile.is_open() && osfile.is_open() && tsfile.is_open())) {throw openwritefile();}
 	Datafile_pos=Datafile.tellp();
-	Statfile_pos=Statsfile.tellp();
+	uds_pos=udsfile.tellp();
+	os_pos=udsfile.tellp();
+	ts_pos=udsfile.tellp();
   }
   catch (std::exception& e){
 	std::cerr << e.what() << std::endl;
@@ -66,6 +65,9 @@ DiagMC::DiagMC(const pt::ptree & config):p(config.get<double>("Momentum")), mu(c
 
 DiagMC::~DiagMC() {
   Datafile.close();
-  Statsfile.close();  
+  udsfile.close();
+  osfile.close();
+  tsfile.close();
+  
 }
 
