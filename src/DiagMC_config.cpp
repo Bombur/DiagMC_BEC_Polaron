@@ -16,7 +16,7 @@ class openwritefile: public std::exception {
   }
 };
 
-DiagMC::DiagMC(int & seed, const pt::ptree & config):p(config.get<double>("Momentum")), mu(config.get<double>("Chemical_Potential")), taumax(config.get<double>("Tau_max")), taubin(config.get<int>("Tau_bin")), ctcor(config.get<double>("Correction_tau")),  qcor(config.get<double>("Correction_dq")),  
+DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>("Momentum")), mu(config.get<double>("Chemical_Potential")), taumax(config.get<double>("Tau_max")), taubin(config.get<int>("Tau_bin")), ctcor(config.get<double>("Correction_tau")),  qcor(config.get<double>("Correction_dq")),  
 										Prem(config.get<double>("Remove_Probability")), Pins(config.get<double>("Insert_Probability")), Pct(config.get<double>("Change_tau_Probability")), Psw(config.get<double>("Swap_Probability")), Pdq(config.get<double>("DQ_Probability")),
 										alpha(config.get<double>("Coupling_Strength")), omegap(config.get<double>("Omega_Phonon")),
 										Meas_its(config.get<int>("Its_per_Measure")), Test_its(config.get<int>("Its_per_Test")), Write_its(config.get<int>("Its_per_Write")), RunTime(config.get<int>("RunTime")) { 
@@ -47,6 +47,7 @@ DiagMC::DiagMC(int & seed, const pt::ptree & config):p(config.get<double>("Momen
 	convert6<<RunTime;
 	convert7<<seed;
 	path=config.get<std::string>("Path");
+	
 	Datafile.open(path+"data/Data_p_"+convert.str()+"_mu_"+convert2.str()+"_tmax_"+convert3.str()+"_a_"+convert4.str()+"_wp_"+convert5.str()+"_Run_Time_"+convert6.str()+"_core_"+convert7.str()+".txt");
 	udsfile.open(path+"data/udstat_p_"+convert.str()+"_mu_"+convert2.str()+"_tmax_"+convert3.str()+"_a_"+convert4.str()+"_wp_"+convert5.str()+"_Run_Time_"+convert6.str()+"_core_"+convert7.str()+".txt");
 	osfile.open(path+"data/ostat_p_"+convert.str()+"_mu_"+convert2.str()+"_tmax_"+convert3.str()+"_a_"+convert4.str()+"_wp_"+convert5.str()+"_Run_Time_"+convert6.str()+"_core_"+convert7.str()+".txt");
@@ -56,6 +57,8 @@ DiagMC::DiagMC(int & seed, const pt::ptree & config):p(config.get<double>("Momen
 	uds_pos=udsfile.tellp();
 	os_pos=udsfile.tellp();
 	ts_pos=udsfile.tellp();
+	
+	global_weight=1;
   }
   catch (std::exception& e){
 	std::cerr << e.what() << std::endl;
@@ -68,6 +71,5 @@ DiagMC::~DiagMC() {
   udsfile.close();
   osfile.close();
   tsfile.close();
-  
 }
 

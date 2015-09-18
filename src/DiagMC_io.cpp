@@ -78,11 +78,11 @@ void DiagMC::status() {
 	updatestat(i, 5) = updatestat(i, 3)/updatestat(i, 0);
   }
   
-  updatestat();
+  updatestats();
   orderstats();
 }
 
-void DiagMC::updatestat() {
+void DiagMC::updatestats() {
   std::cout << "Update Statistics" << '\n';
   std::cout <<'\n'<< "*************************************" << std::endl;
   std::cout << "COLUMNS" << '\n' << "1:ATTEMPTED" << '\n' << "2:POSSIBLE" << '\n' << "3:REJECTED" << '\n' << "4:ACCEPTED" << '\n' << "5:ACCEPTANCE RATIO POSSIBLE" << '\n' << "6:ACCEPTANCE RATIO TOTAL" << '\n';
@@ -103,7 +103,7 @@ void DiagMC::timestats(const VectorXd & timestat) {
   std::cout << "CHANGE TAU:" << '\t' << timestat(0) << '\n' << "CT HO:     " << '\t' << timestat(1) << '\n' <<  "INSERT: " << '\t' << timestat(2) << '\n' << "REMOVE: " << '\t' << timestat(3) << '\n' <<  "SWAP:     " << '\t' << timestat(4) << '\n' << "DQ:      " << '\t' << timestat(5) << std::endl;
 }
   
-const MatrixXi & DiagMC::get_Data() {
+MatrixXd DiagMC::get_Data() {
   MatrixXd  output(taubin, 5);
 	
   int CG0p = 0;

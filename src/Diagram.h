@@ -34,6 +34,7 @@ class Diagram {
 	std::vector< std::vector<double> > times;
 	std::vector< std::vector<double> > phprop;
 	std::vector< std::vector<double> > elprop;
+	int sw_pos; 					// possible vertices for swap
 	  
   public:
 	Diagram();
@@ -45,8 +46,10 @@ class Diagram {
 	double get_tinit(const int & arc) {return times[arc][0];}
 	double get_tfin(const int & arc) {return times[arc+1][0];}
 	int get_link(const int & arc) {return (int)(times[arc][1]+0.5);}
+	double get_sw_pos() {return static_cast<double>(sw_pos);}
 	std::vector<double> get_q(const int & arc) {return phprop[arc];}
 	std::vector<double> get_p(const int & arc) {return elprop[arc];}
+	
 	 
 	//proposing pr_
 	int pr_arc;
@@ -70,7 +73,7 @@ class Diagram {
 	void insert();
 	void remove();
 	int set_tau(double tau);
-	void swap();
+	void swap(const double &);
 	void ct();
 	void dq();
 	

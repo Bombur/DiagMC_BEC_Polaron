@@ -14,6 +14,8 @@ Diagram::Diagram() {
   phprop.reserve(1000);
   phprop.assign(1, std::vector<double>(3, 0));
   
+  sw_pos=0;
+  
   pr_arc = 0;
   pr_tauin = 0;
   pr_taufin = 0;
@@ -35,6 +37,8 @@ Diagram::Diagram(const double & p, const double & tau, const std::function<doubl
   
   phprop.reserve(50);
   phprop.assign(1, std::vector<double>(3, 0));
+  
+  sw_pos=0;
   
   pr_arc = 0;
   pr_tauin = 0;
@@ -62,7 +66,7 @@ void Diagram::random_arc() {
 int Diagram::propose_insert() {
   try{
 	random_arc();										//arc to insert
-	if (order != 0) {return -2;}						//step 2 just 1st order allowed
+	//if (order != 0) {return -2;}						//step 2 just 1st order allowed
 	
 	pr_tauin = get_tinit(pr_arc);			
 	pr_taufin = get_tfin(pr_arc);
@@ -76,7 +80,7 @@ int Diagram::propose_insert() {
 	pr_q[1] = sqrt(-2*log(drnd()))*sin(2*M_PI*drnd())/sqrt(pr_tau2[0]-pr_tau1[0]);		//qy
 	pr_q[2] = sqrt(-2*log(drnd()))*cos(2*M_PI*drnd())/sqrt(pr_tau2[0]-pr_tau1[0]);		//qz
 	
-	pr_p = get_p(pr_arc);
+	pr_p = vsub(phprop[pr_arc], pr_q);
 	 
 	return 0;
   }	catch (std::exception& e) {
@@ -89,7 +93,7 @@ int Diagram::propose_remove() {
   try{
 	random_arc();	//arc to remove
 	if (pr_arc != (int)(times[pr_arc+1][1]+0.5)) {return -1;}
-	if (get_order() == 0) {return -1;}
+	if (order == 0) {return -1;}
 	
 	pr_tauin = get_tinit(pr_arc-1);
 	pr_taufin = get_tfin(pr_arc+1);
@@ -99,7 +103,7 @@ int Diagram::propose_remove() {
 	pr_tau2[0] = get_tfin(pr_arc);							//tau2
 	pr_tau2[1] = -1;
 	
-	pr_q = get_q(pr_arc);		
+	pr_q.assign(3,0);		
 	
 	pr_p = get_p(pr_arc-1);
 	return 0;
@@ -121,8 +125,6 @@ int Diagram::propose_swap() {
   pr_tau1.assign(2,0);
   pr_tau2.assign(2,0);
   pr_q.assign(3,0);	
-  
-  //std::cout << get_p(pr_arc) << '\t' << get_q(pr_arc) << '\t' << get_q(pr_arc-1) << '\t' << get_p(pr_arc) << '\t' <<
   
   pr_p =vsub( vsub( vadd( vadd(get_p(pr_arc), get_q(pr_arc)), get_q(pr_arc)),  get_q(pr_arc-1)), get_q(pr_arc +1)); //pnew
   
@@ -179,7 +181,7 @@ int Diagram::propose_dq(const double & qcor) {
 	if (order == 0) {return -1;}
 	random_arc(); //arc to insert
 	if (pr_arc == 0) {return -1;}
-	if (times[pr_arc][1] < double(pr_arc)) {
+	if (times[pr_arc][1] < static_cast<double>(pr_arc)) {
 	  pr_arc = (int)(times[pr_arc][1]+0.5);
 	}
 	
@@ -215,7 +217,7 @@ void Diagram::insert() {
 	for (int i = 0; i<((2*get_order())+1); i++) {
 	  if ((int)(times[i][1]+0.5) > pr_arc) {times[i][1] +=2;}
 	}
-	//std::cout << order << std::endl;
+	
 	times.insert(tit+1, pr_tau1);										//insert tau1 and tau2
 	times.insert(tit+2, pr_tau2);
 	
@@ -226,6 +228,15 @@ void Diagram::insert() {
 	elprop.insert(eit+1, std::move(vsub(get_p(pr_arc), pr_q)));					//insert oldp-q in arc+1
 	elprop.insert(eit+2, std::move(get_p(pr_arc)));								//insert oldp in arc+2	  
  
+	
+	if (order !=0) {		// just one of the vertices is possible for swap
+	  sw_pos+=1;
+	  if (get_link(pr_arc) == (pr_arc+3)) {
+		sw_pos+=1;
+	  } // insert in zero loop
+	} 
+	
+
 	order+=1;
 
   }	catch (std::exception& e) {
@@ -248,12 +259,19 @@ void Diagram::remove() {
       
 	elprop.erase(eit, eit+2);  
   
+	if (order != 1) {
+	  sw_pos-=1;
+	  if (get_link(pr_arc) == (pr_arc-1)) {
+		sw_pos-=1;
+	  }
+	} 
+	
 	order-=1;
 	  
 	for (int i = 0; i<((2*get_order())+1); i++) {
 	  if ((int)(times[i][1]+0.5) > pr_arc) {times[i][1] -=2;}
 	}
-	
+
   } catch (std::exception& e) {
       std::cerr << e.what() << std::endl;
       exit(EXIT_FAILURE);
@@ -269,7 +287,7 @@ int Diagram::set_tau(double tau) {
 }
 
 
-void Diagram::swap() {
+void Diagram::swap(const double & sw_pos_cor) {
   double tmp = times[(int)(times[pr_arc][1]+0.5)][1];
   times[(int)(times[pr_arc][1]+0.5)][1] = times[(int)(times[pr_arc+1][1]+0.5)][1];
   times[(int)(times[pr_arc+1][1]+0.5)][1] = tmp;
@@ -281,7 +299,8 @@ void Diagram::swap() {
   phprop[pr_arc] = vsub( vadd(get_q(pr_arc-1), get_q(pr_arc+1)), get_q(pr_arc));
   
   elprop[pr_arc] = pr_p;
-
+  
+  sw_pos += (int)std::round(sw_pos_cor);
 }
 
 

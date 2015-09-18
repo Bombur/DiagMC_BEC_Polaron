@@ -5,13 +5,15 @@ int DiagMC::change_tau() {
   double ntau = - log(drnd())/E;		//new tau
   updatestat(0,0) +=1;						//attempted
   
-  if (diag.get_order() != 0) {return -1;}
+  //if (diag.get_order() != 0) {return -1;}
+  if (diag.get_order() != 0 && ntau<diag.get_tinit(2*diag.get_order()-1)) {return -1;}
     
   if (ntau < taumax) {
 	if (diag.set_tau(ntau) == 0) {
 	  updatestat(0,1) +=1;						//possible
 	  updatestat(0,3) +=1;						//accepted
 	  //tau = ntau;
+	  global_weight *= G0el(diag.get_p(0), ntau, 0.)/ G0el(diag.get_p(0), diag.get_tau(),0.);
 	  return 0;
 	}
   }
@@ -48,15 +50,39 @@ int DiagMC::insert() {
   updatestat(1,0) +=1;		//attempted
   if(diag.propose_insert()!=0) {return -1;}
   updatestat(1,1) +=1;		//possible
-  
-  double weight = (alpha/vsq(diag.pr_q)*G0el(vsub(diag.pr_p,diag.pr_q), diag.pr_tau2[0], diag.pr_tau1[0])*Dph(diag.pr_tau2[0], diag.pr_tau1[0]))
-				  *(Prem /double(diag.get_order()+1))
-				  /(G0el(diag.pr_p, diag.pr_tau2[0], diag.pr_tau1[0]))
-				  /(Pins/(2*double(diag.get_order())+1) /(diag.pr_taufin-diag.pr_tauin) /(diag.pr_taufin-diag.pr_tau1[0]) *pow((diag.pr_tau2[0]-diag.pr_tau1[0])/2/M_PI, 3/2) * exp(-vsq(diag.pr_q)/2 *(diag.pr_tau2[0]-diag.pr_tau1[0])));
+  /*
+  double weight = (alpha/vsq(diag.pr_q)*G0el(diag.pr_p, diag.pr_tau2[0], diag.pr_tau1[0])*Dph(diag.pr_tau2[0], diag.pr_tau1[0]))
+				  *(Prem /((2*(static_cast<double>(diag.get_order())+1))+1))
+				  /(G0el(diag.get_p(diag.pr_arc), diag.pr_tau2[0], diag.pr_tau1[0]))
+				  /(Pins/((2*static_cast<double>(diag.get_order()))+1) /(diag.pr_taufin-diag.pr_tauin) /(diag.pr_taufin-diag.pr_tau1[0]) *pow((diag.pr_tau2[0]-diag.pr_tau1[0])/2/M_PI, 3/2) * exp(-vsq(diag.pr_q)/2 *(diag.pr_tau2[0]-diag.pr_tau1[0])));
+  */
+  // weight part	
+  double weight = G0el(diag.pr_p, diag.pr_tau2[0], diag.pr_tau1[0]);	//G0(new)
+  weight /= G0el(diag.get_p(diag.pr_arc), diag.pr_tau2[0], diag.pr_tau1[0]);	//G0(old)
+  weight *= Dph(diag.pr_tau2[0], diag.pr_tau1[0]);				  //Phonon(new)
+  weight *= alpha/vsq(diag.pr_q);
 
+  double weight_diff = weight;
+
+  // a priori part
+  
+  //order
+  double n = static_cast<double>(diag.get_order());
+
+  weight *= Prem/Pins;	
+  weight /= 1 + 2*(n+1); 	//remove selecting vertex 
+  weight *= 1 + 2*n; 		//insert selecting vertex
+  
+  weight *= diag.pr_taufin-diag.pr_tauin; //sample first vertex to insert
+  weight *= diag.pr_taufin-diag.pr_tau1[0]; //select second vertex to insert
+  //select phonon momentum
+  weight /= pow((diag.pr_tau2[0]-diag.pr_tau1[0])/2/M_PI, 3/2) * exp((-vsq(diag.pr_q)/2) *(diag.pr_tau2[0]-diag.pr_tau1[0]));
+  
+  
   if (drnd() < weight) {
     updatestat(1,3) +=1;		//accepted
     diag.insert();
+	global_weight *= weight_diff;
   }
   else {
     updatestat(1,2) +=1;		//rejected
@@ -68,15 +94,40 @@ int DiagMC::remove() {
   updatestat(2,0) += 1;		//attempted
   if(diag.propose_remove()!=0) {return -1;}
   updatestat(2,1) +=1;		//possible
-  
-  double weight = 1/(alpha/vsq(diag.pr_q)*G0el(vsub(diag.pr_p,diag.pr_q), diag.pr_tau2[0], diag.pr_tau1[0])*Dph(diag.pr_tau2[0], diag.pr_tau1[0]))
-				  /(Prem /double(diag.get_order()+1))
+  /*
+  double weight = 1/(alpha/vsq(diag.get_q(diag.pr_arc))*G0el(diag.get_p(diag.pr_arc), diag.pr_tau2[0], diag.pr_tau1[0])*Dph(diag.pr_tau2[0], diag.pr_tau1[0]))
+				  /(Prem /((2*static_cast<double>(diag.get_order()))+1))
 				  *(G0el(diag.pr_p, diag.pr_tau2[0], diag.pr_tau1[0]))
-				  *(Pins/(2*double(diag.get_order())+1) /(diag.pr_taufin-diag.pr_tauin) /(diag.pr_taufin-diag.pr_tau1[0]) *pow((diag.pr_tau2[0]-diag.pr_tau1[0])/2/M_PI, 3/2) * exp(-vsq(diag.pr_q)/2 *(diag.pr_tau2[0]-diag.pr_tau1[0])));
+				  *(Pins/((2*(static_cast<double>(diag.get_order())-1))+1) /(diag.pr_taufin-diag.pr_tauin) /(diag.pr_taufin-diag.pr_tau1[0]) *pow((diag.pr_tau2[0]-diag.pr_tau1[0])/2/M_PI, 3/2) * exp(-vsq(diag.pr_q)/2 *(diag.pr_tau2[0]-diag.pr_tau1[0])));
+  */
+  
+  // weight part	
+  double weight = G0el(diag.pr_p, diag.pr_tau2[0], diag.pr_tau1[0]);	//G0(new)
+  weight /= G0el(diag.get_p(diag.pr_arc), diag.pr_tau2[0], diag.pr_tau1[0]);	//G0(old)
+  weight /= Dph(diag.pr_tau2[0], diag.pr_tau1[0]);				  //Phonon(new)
+  weight /= alpha/vsq(diag.get_q(diag.pr_arc));
 
+  double weight_diff = weight;
+
+  // a priori part
+  
+  //order
+  double n = static_cast<double>(diag.get_order());
+
+  weight *= Pins/Prem;	
+  weight /= 1 + 2*(n-1); 	//insert selecting vertex 
+  weight *= 1 + 2*n; 		//remove selecting vertex
+  
+  weight /= diag.pr_taufin-diag.pr_tauin; //sample first vertex to insert
+  weight /= diag.pr_taufin-diag.pr_tau1[0]; //select second vertex to insert
+  //select phonon momentum
+  weight *= pow((diag.pr_tau2[0]-diag.pr_tau1[0])/2/M_PI, 3/2) * exp((-vsq(diag.pr_q)/2) *(diag.pr_tau2[0]-diag.pr_tau1[0]));
+				  
+				  
   if (drnd() < weight) {
     updatestat(2,3) +=1;		//accepted
     diag.remove();
+	global_weight *= weight_diff;
   }
   else {
     updatestat(2,2) +=1;		//rejected
@@ -86,6 +137,7 @@ int DiagMC::remove() {
 }
 
 int DiagMC::swap() {
+  double sw_pos_cor = 0;
   updatestat(3,0) += 1; //attempted
   updatestat(4,0) += 1;
   updatestat(5,0) += 1;
@@ -95,12 +147,30 @@ int DiagMC::swap() {
   
   double weight = G0el(diag.pr_p, diag.pr_taufin, diag.pr_tauin)/G0el(diag.get_p(diag.pr_arc), diag.pr_taufin, diag.pr_tauin);
   
+  //destroying zero loops
+  if (diag.get_link(diag.pr_arc) ==  (diag.pr_arc -1)) {
+	sw_pos_cor +=1;
+  }
+  if (diag.get_link(diag.pr_arc+1) ==  (diag.pr_arc +2)) {
+	sw_pos_cor +=1;
+  }
+  
+  //creating zero loops
+  if (diag.get_link(diag.pr_arc+1) ==  (diag.pr_arc -1)) {
+	sw_pos_cor -=1;
+  }
+  if (diag.get_link(diag.pr_arc) ==  (diag.pr_arc +2)) {
+	sw_pos_cor -=1;
+  }
+
+  weight *= (diag.get_sw_pos()/(diag.get_sw_pos() + sw_pos_cor));
+  
   // both vertices are open or closed
   if (which == 0) {
 	updatestat(4,1) +=1; //possible
 	if (drnd() < weight) {
 	  updatestat(4,3) +=1; //accepted
-	  diag.swap();
+	  diag.swap(sw_pos_cor);
 	}
 	else {
 	  updatestat(4,2)+= 1; 	// rejected
@@ -113,7 +183,7 @@ int DiagMC::swap() {
 	weight /= pow(Dph(diag.pr_taufin, diag.pr_tauin),2);
 	if (drnd() < weight) {
 	  updatestat(5,3) +=1; //accepted
-	  diag.swap();
+	  diag.swap(sw_pos_cor);
 	}
 	else {
 	  updatestat(5,2)+= 1; 	// rejected
@@ -126,7 +196,7 @@ int DiagMC::swap() {
 	weight *= pow(Dph(diag.pr_taufin, diag.pr_tauin),2);
 	if (drnd() < weight) {
 	  updatestat(6,3) +=1; //accepted
-	  diag.swap();
+	  diag.swap(sw_pos_cor);
 	}
 	else {
 	  updatestat(6,2)+= 1; 	// rejected
@@ -136,7 +206,8 @@ int DiagMC::swap() {
   for (int i =1 ; i<4 ; i++){
 	updatestat(3,i) = updatestat(4,i) + updatestat(5,i) + updatestat(6,i);
   }
-  
+
+
   return 0;
 }
 

@@ -2,7 +2,10 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
-//io
+//system
+#include <cstdlib>
+
+//io 
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -66,6 +69,9 @@ class DiagMC {
 	long long os_pos;
 	long long ts_pos;
 	
+	//test variables
+	double global_weight;
+	
   public:
 	const double Prem, Pins, Pct, Psw, Pdq;		//probabilities to choose remove or insert branch
 	
@@ -77,7 +83,7 @@ class DiagMC {
 	const int RunTime;			//in seconds
 	
 	//DiagMC_config.cpp
-	DiagMC(const pt::ptree &);
+	DiagMC(const int &, const pt::ptree &);
 	~DiagMC();
 
 	//DiagMC.cpp
@@ -102,18 +108,19 @@ class DiagMC {
 	
 		
 	void status();
-	void updatestat();
+	void updatestats();
 	void orderstats();
 	void timestats(const VectorXd &);
 	
 	//for multible cores
-	const MatrixXd & get_Data();
-	const MatrixXd & get_uds() {return updatestat;}
-	const MatrixXi & get_os() {return orderstat;}
+	MatrixXd get_Data();
+	MatrixXd get_uds() {return updatestat;}
+	MatrixXi get_os() {return orderstat;}
 	
-	
+	 
 	//DiagMC_test.cpp
-	void test(); 				
+	void test(); 
+	double weight_calc();
 	
 };
 
