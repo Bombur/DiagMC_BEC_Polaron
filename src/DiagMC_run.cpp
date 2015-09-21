@@ -137,6 +137,7 @@ int main() {
 		  		  
 		  //fp.status();
 		  std::cout << "# Test ok thread " << seed << std::endl;
+		  fp.printall();
 	
 		  fp.write();
 	
@@ -153,7 +154,7 @@ int main() {
 		  dt = std::difftime(dt_end, dt_be);
 		  
 		  
-		  std::cout << "# Time on core  " << nseconds << '\n' << std::endl;
+		  std::cout << "# Time on core  " << nseconds << '\t' << dt << '\n' << std::endl;
 		  
 		} while (nseconds < fp.RunTime - dt);
 		
@@ -185,28 +186,28 @@ int main() {
 	all_orders << Data_tot[0].col(0).array() , ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
 	for (int i =0; i < nseeds ; i++)
 	  all_orders.col(1) += Data_tot[i].col(1).array();
-	all_orders.col(1) /= nseeds;
+	all_orders.col(1) /= static_cast<double>(nseeds);
 	
 	//zero order
 	ArrayXXd zero_order(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
 	zero_order << Data_tot[0].col(0) , ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
 	for (int i =0; i < nseeds ; i++)
 	  zero_order.col(1) += Data_tot[i].col(2).array();
-	zero_order.col(1) /= nseeds;
+	zero_order.col(1) /=  static_cast<double>(nseeds);
 	
 	//first order
 	ArrayXXd first_order(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
 	first_order << Data_tot[0].col(0) , ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
 	for (int i =0; i < nseeds ; i++)
 	  first_order.col(1) += Data_tot[i].col(3).array();
-	first_order.col(1) /= nseeds;
+	first_order.col(1) /=  static_cast<double>(nseeds);
 	
 	//second order
 	ArrayXXd second_order(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
 	second_order << Data_tot[0].col(0) , ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
 	for (int i =0; i < nseeds ; i++)
 	  second_order.col(1) += Data_tot[i].col(4).array();
-	second_order.col(1) /= nseeds;
+	second_order.col(1) /=  static_cast<double>(nseeds);
 	
 	
 	//errors
@@ -217,7 +218,7 @@ int main() {
 		first_order.col(2) += (Data_tot[i].col(3).array()-first_order.col(1)).pow(2); 
 		second_order.col(2) += (Data_tot[i].col(4).array()-second_order.col(1)).pow(2); 
 	  }
-	  double norm = 1/(nseeds*(nseeds-1));
+	  double norm = 1/static_cast<double>(nseeds*(nseeds-1));
 	  all_orders.col(2) *= norm;
 	  zero_order.col(2) *= norm;
 	  first_order.col(2) *= norm;
@@ -269,7 +270,7 @@ int main() {
 	os_outfile.close();
 	ts_outfile.close();
 	
-	std::system("rm -f ./data/*_core*");  //removing the data from each core
+	std::system("rm -f ./data/*_core_*");  //removing the data from each core
 	
 	
 	std::cout << "# Analysing data, result = " << system("python3 data_ana.py") << std::endl;

@@ -23,8 +23,8 @@ DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>(
   try{
 	if (fabs(1-Prem-Pins-Pct - Pdq-Psw) > 0.0000001) {throw oor_Probs();}
 	
-	E = pow(p,2)/2 - mu;
-	G0p = (1-exp(-E*taumax))/E;
+	E = pow(p,2.)/2. - mu;
+	G0p = (1.-exp(-E*taumax))/E;
   
 	//Random Number Generator
 	std::mt19937 generator (seed);
@@ -58,7 +58,7 @@ DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>(
 	os_pos=udsfile.tellp();
 	ts_pos=udsfile.tellp();
 	
-	global_weight=1;
+	global_weight=1.;
   }
   catch (std::exception& e){
 	std::cerr << e.what() << std::endl;

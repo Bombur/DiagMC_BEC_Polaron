@@ -70,13 +70,13 @@ int DiagMC::insert() {
   double n = static_cast<double>(diag.get_order());
 
   weight *= Prem/Pins;	
-  weight /= 1 + 2*(n+1); 	//remove selecting vertex 
-  weight *= 1 + 2*n; 		//insert selecting vertex
+  weight /= 1. + (n+1.)*2.; 	//remove selecting vertex 
+  weight *= 1. + n*2.; 		//insert selecting vertex
   
   weight *= diag.pr_taufin-diag.pr_tauin; //sample first vertex to insert
   weight *= diag.pr_taufin-diag.pr_tau1[0]; //select second vertex to insert
   //select phonon momentum
-  weight /= pow((diag.pr_tau2[0]-diag.pr_tau1[0])/2/M_PI, 3/2) * exp((-vsq(diag.pr_q)/2) *(diag.pr_tau2[0]-diag.pr_tau1[0]));
+  weight /= pow((diag.pr_tau2[0]-diag.pr_tau1[0])/2./M_PI, 3./2.) * exp((-vsq(diag.pr_q)/2.) *(diag.pr_tau2[0]-diag.pr_tau1[0]));
   
   
   if (drnd() < weight) {
@@ -115,13 +115,13 @@ int DiagMC::remove() {
   double n = static_cast<double>(diag.get_order());
 
   weight *= Pins/Prem;	
-  weight /= 1 + 2*(n-1); 	//insert selecting vertex 
-  weight *= 1 + 2*n; 		//remove selecting vertex
+  weight /= 1. + (n-1.)*2.; 	//insert selecting vertex 
+  weight *= 1. + n*2.; 		//remove selecting vertex
   
   weight /= diag.pr_taufin-diag.pr_tauin; //sample first vertex to insert
   weight /= diag.pr_taufin-diag.pr_tau1[0]; //select second vertex to insert
   //select phonon momentum
-  weight *= pow((diag.pr_tau2[0]-diag.pr_tau1[0])/2/M_PI, 3/2) * exp((-vsq(diag.pr_q)/2) *(diag.pr_tau2[0]-diag.pr_tau1[0]));
+  weight *= pow((diag.pr_tau2[0]-diag.pr_tau1[0])/2./M_PI, 3./2.) * exp((-vsq(diag.pr_q)/2.) *(diag.pr_tau2[0]-diag.pr_tau1[0]));
 				  
 				  
   if (drnd() < weight) {
@@ -137,7 +137,7 @@ int DiagMC::remove() {
 }
 
 int DiagMC::swap() {
-  double sw_pos_cor = 0;
+  double sw_pos_cor = 0.;
   updatestat(3,0) += 1; //attempted
   updatestat(4,0) += 1;
   updatestat(5,0) += 1;
@@ -149,18 +149,18 @@ int DiagMC::swap() {
   
   //destroying zero loops
   if (diag.get_link(diag.pr_arc) ==  (diag.pr_arc -1)) {
-	sw_pos_cor +=1;
+	sw_pos_cor +=1.;
   }
   if (diag.get_link(diag.pr_arc+1) ==  (diag.pr_arc +2)) {
-	sw_pos_cor +=1;
+	sw_pos_cor +=1.;
   }
   
   //creating zero loops
   if (diag.get_link(diag.pr_arc+1) ==  (diag.pr_arc -1)) {
-	sw_pos_cor -=1;
+	sw_pos_cor -=1.;
   }
   if (diag.get_link(diag.pr_arc) ==  (diag.pr_arc +2)) {
-	sw_pos_cor -=1;
+	sw_pos_cor -=1.;
   }
 
   weight *= (diag.get_sw_pos()/(diag.get_sw_pos() + sw_pos_cor));
@@ -180,7 +180,7 @@ int DiagMC::swap() {
   // first vertex is start point, second one is end point 
   if (which == -2) {
 	updatestat(5,1) +=1; //possible
-	weight /= pow(Dph(diag.pr_taufin, diag.pr_tauin),2);
+	weight /= pow(Dph(diag.pr_taufin, diag.pr_tauin),2.);
 	if (drnd() < weight) {
 	  updatestat(5,3) +=1; //accepted
 	  diag.swap(sw_pos_cor);
@@ -193,7 +193,7 @@ int DiagMC::swap() {
    // first vertex is end point, second one is start point 
   if (which == 2) {
 	updatestat(6,1) +=1; //possible
-	weight *= pow(Dph(diag.pr_taufin, diag.pr_tauin),2);
+	weight *= pow(Dph(diag.pr_taufin, diag.pr_tauin),2.);
 	if (drnd() < weight) {
 	  updatestat(6,3) +=1; //accepted
 	  diag.swap(sw_pos_cor);
@@ -216,7 +216,7 @@ int DiagMC::dq() {
   if(diag.propose_dq(qcor)!=0) {return -1;}
   updatestat(8,1) +=1;		//possible
   
-  double weight = 1;
+  double weight = 1.;
   for (int i=0 ; i < (diag.get_link(diag.pr_arc) - diag.pr_arc); i++) {
     weight *= G0el(vsub(diag.get_p(diag.pr_arc + i), diag.pr_q), diag.get_tfin(diag.pr_arc + i), diag.get_tinit(diag.pr_arc + i));
     weight /= G0el(diag.get_p(diag.pr_arc + i), diag.get_tfin(diag.pr_arc + i), diag.get_tinit(diag.pr_arc + i));
@@ -236,14 +236,14 @@ int DiagMC::dq() {
 
 
 void DiagMC::measure(const int & whichstep) {
-  Data((int)(diag.get_tau()/taumax*taubin), 0) +=1;
-  if (get_order() < 2) {Data((int)(diag.get_tau()/taumax*taubin), get_order()+1) += 1;}
-  if (get_order() ==2 && vsq(diag.get_q(2)) < 0.00000000000001) {	
-	Data((int)(diag.get_tau()/taumax*taubin), get_order()+1) += 1;
+  Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 0) +=1;
+  if (diag.get_order() < 2) {Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), diag.get_order()+1) += 1;}
+  if (diag.get_order() ==2 && vsq(diag.get_q(2)) < 0.00000000000001) {	
+	Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), diag.get_order()+1) += 1;
   }
   
-  if (get_order() < orderstat.size()){
-	orderstat(get_order()) +=1;
+  if (diag.get_order() < orderstat.size()){
+	orderstat(diag.get_order()) +=1;
   }
    
 } 

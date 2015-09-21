@@ -85,17 +85,14 @@ class DiagMC {
 	//DiagMC_config.cpp
 	DiagMC(const int &, const pt::ptree &);
 	~DiagMC();
-
-	//DiagMC.cpp
+	
+	//DiagMC_updates.cpp
 	int change_tau();   //only 0 order
 	int ct();
 	int insert();
 	int remove();
 	int swap();
 	int dq();
-	
-	//DiagMC_updates.cpp
-	int get_order() {return diag.get_order();};
 	void measure(const int & whichmeas);
 	
 	//DiagMC_estimator.cpp
@@ -121,7 +118,7 @@ class DiagMC {
 	//DiagMC_test.cpp
 	void test(); 
 	double weight_calc();
-	
+	void printall();
 };
 
 

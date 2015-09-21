@@ -62,27 +62,27 @@ class swpos: public std::exception
 void Diagram::test() {
   try {
 	//printall();
-	if (times.size() != (2*get_order())+2) {throw dnf_vecsize();}
+	if (times.size() != (2*order)+2) {throw dnf_vecsize();}
 	if (phprop.size() != times.size()-1) {throw dnf_vecsize();}
 	if (elprop.size() != phprop.size()) {throw dnf_vecsize();}
 	
-	if ((int)(times[0][1]+0.5) != (2*get_order())+1) {throw timeserr();}
-	if ((int)(times[(2*get_order())+1][1]+0.5) != 0) {throw timeserr();}
+	if ((int)(times[0][1]+0.5) != (2*order)+1) {throw timeserr();}
+	if ((int)(times[(2*order)+1][1]+0.5) != 0) {throw timeserr();}
 	
 	for (int i = 0; i< 3; i++) {
-	  if (fabs(get_q(0).at(i) - get_q(2*get_order()).at(i)) > 0.0000001) {throw phproperr();}
-	  if (fabs(get_p(0).at(i) - get_p(2*get_order()).at(i)) > 0.0000001) {throw elproperr();}
+	  if (fabs(get_q(0).at(i) - get_q(2*order).at(i)) > 0.0000001) {throw phproperr();}
+	  if (fabs(get_p(0).at(i) - get_p(2*order).at(i)) > 0.0000001) {throw elproperr();}
 	}
 	
 	
 	int zl = 0; // number of zero loops for possible swap
 	  
-	VectorXd tmp=VectorXd::Zero((2*get_order())+2);
-	for (int i=0; i<(2*get_order())+2; i++) {
-	  tmp((int)(times[i][1]+0.5)) +=1;
+	VectorXd tmp=VectorXd::Zero((2*order)+2);
+	for (int i=0; i<(2*order)+2; i++) {
+	  tmp((int)(times[i][1]+0.5)) +=1.;
 	  if ((int)(times[i][1]+0.5) == i) {throw timeserr();}
 	}
-	for (int i=0; i<(2*get_order())+1; i++) {
+	for (int i=0; i<(2*order)+1; i++) {
 	  if (times[i] > times[i+1]) {throw timeserr();}
 	  for (int i2 = 0; i2< 3; i2++) {
 		if (fabs((get_p(i).at(i2)+get_q(i).at(i2)) - get_p(0).at(i2)) > 0.0000001)  {throw momerr();}
@@ -97,7 +97,7 @@ void Diagram::test() {
 	  
 	}
 	
-	for (int i=0; i<(2*get_order())+2; i++) {
+	for (int i=0; i<(2*order)+2; i++) {
 	  if ((int)(tmp(i)+0.5) != 1) {throw propopen();}
 	}
   } catch (std::exception& e) {

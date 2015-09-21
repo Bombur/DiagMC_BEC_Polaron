@@ -26,9 +26,9 @@ void DiagMC::write() {
 	int CG0p = 0;
 	for (int i=0; i< taubin; i++) {
 	  CG0p += Data(i, 1);
-	  output(i, 0) = (i+0.5)*taumax/taubin;
+	  output(i, 0) = (static_cast<double>(i)+0.5)*taumax/static_cast<double>(taubin);
 	}
-	output.rightCols(4)=Data.cast<double>()*(G0p/CG0p);
+	output.rightCols(4)=Data.cast<double>()*(G0p/static_cast<double>(CG0p))*static_cast<double>(taubin)/taumax;
 	
 	Datafile.seekp(Datafile_pos);
 	Datafile << output << '\n';
@@ -109,9 +109,9 @@ MatrixXd DiagMC::get_Data() {
   int CG0p = 0;
   for (int i=0; i< taubin; i++) {
 	CG0p += Data(i, 1);
-	output(i, 0) = (i+0.5)*taumax/taubin;
+	output(i, 0) = (static_cast<double>(i)+0.5)*taumax/static_cast<double>(taubin);
   }
-  output.rightCols(4)=Data.cast<double>()*(G0p/CG0p);
+  output.rightCols(4)=Data.cast<double>()*(G0p/static_cast<double>(CG0p))*static_cast<double>(taubin)/taumax;;
 	
   return output;	
 }
