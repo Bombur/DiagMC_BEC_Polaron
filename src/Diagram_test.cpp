@@ -50,6 +50,7 @@ class propopen: public std::exception
   }
 };
 
+
 class swpos: public std::exception
 {
   virtual const char* what() const throw()
@@ -82,11 +83,13 @@ void Diagram::test() {
 	  if ((int)(times[i][1]+0.5) == i) {throw timeserr();}
 	}
 	for (int i=0; i<(2*order)+1; i++) {
+
 	  if (times[i] > times[i+1]) {throw timeserr();}
 	  for (int i2 = 0; i2< 3; i2++) {
 		if (fabs((get_p(i).at(i2)+get_q(i).at(i2)) - get_p(0).at(i2)) > 0.0000001)  {throw momerr();}
 
 	  }
+
 
 	}
 	
@@ -99,7 +102,6 @@ void Diagram::test() {
   }
 
 }
-
 
 
 void Diagram::printall() {
