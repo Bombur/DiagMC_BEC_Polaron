@@ -17,9 +17,9 @@ class filepos: public std::exception {
 
 void DiagMC::write() {
   try {
-	if (!(Datafile.is_open())) {throw openwritefile();}
+	//if (!(Datafile.is_open())) {throw openwritefile();}
 	//long long tmp=Datafile.tellp();
-	if (Datafile_pos!=0) {throw filepos();}
+	//if (Datafile_pos!=0) {throw filepos();}
 	
 	MatrixXd  output(taubin, 5);
 	
@@ -30,16 +30,16 @@ void DiagMC::write() {
 	}
 	output.rightCols(4)=Data.cast<double>()*(G0p/static_cast<double>(CG0p))*static_cast<double>(taubin)/taumax;
 	
-	Datafile.seekp(Datafile_pos);
-	Datafile << output << '\n';
-	Datafile.flush();
+	//Datafile.seekp(Datafile_pos);
+	//Datafile << output << '\n';
+	//Datafile.flush();
   }
   catch (std::exception& e) {
 	std::cerr << e.what() << std::endl;
 	exit(EXIT_FAILURE);
   }
 }
-
+/*
 void DiagMC::Stattofile(const VectorXd & timestat) {
   try {
 	if (!(udsfile.is_open() && osfile.is_open() && tsfile.is_open())) {throw openwritefile();}
@@ -102,6 +102,7 @@ void DiagMC::timestats(const VectorXd & timestat) {
   std::cout << "Time Statistics [%]" << std:: endl;
   std::cout << "CHANGE TAU:" << '\t' << timestat(0) << '\n' << "CT HO:     " << '\t' << timestat(1) << '\n' <<  "INSERT: " << '\t' << timestat(2) << '\n' << "REMOVE: " << '\t' << timestat(3) << '\n' <<  "SWAP:     " << '\t' << timestat(4) << '\n' << "DQ:      " << '\t' << timestat(5) << std::endl;
 }
+*/
   
 MatrixXd DiagMC::get_Data() {
   MatrixXd  output(taubin, 5);
@@ -111,7 +112,7 @@ MatrixXd DiagMC::get_Data() {
 	CG0p += Data(i, 1);
 	output(i, 0) = (static_cast<double>(i)+0.5)*taumax/static_cast<double>(taubin);
   }
-  output.rightCols(4)=Data.cast<double>()*(G0p/static_cast<double>(CG0p))*static_cast<double>(taubin)/taumax;;
+  output.rightCols(4)=Data.cast<double>()*(G0p/static_cast<double>(CG0p))*static_cast<double>(taubin)/taumax;
 	
   return output;	
 }

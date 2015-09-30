@@ -75,8 +75,7 @@ void Diagram::test() {
 	}
 	
 	
-	int zl = 0; // number of zero loops for possible swap
-	  
+  
 	VectorXd tmp=VectorXd::Zero((2*order)+2);
 	for (int i=0; i<(2*order)+2; i++) {
 	  tmp((int)(times[i][1]+0.5)) +=1.;
@@ -88,13 +87,7 @@ void Diagram::test() {
 		if (fabs((get_p(i).at(i2)+get_q(i).at(i2)) - get_p(0).at(i2)) > 0.0000001)  {throw momerr();}
 
 	  }
-	  if (get_link(i) == (i+1)) {zl += 1;}	  
-	}
-	
-	if ( ((order != 0) && (order != 1)) && (((2*order)-1) != (sw_pos +zl)))  {
-	  std::cout << zl <<'\t' << sw_pos << '\t' << ((2*order)-1) << std::endl;
-	  throw swpos();
-	  
+
 	}
 	
 	for (int i=0; i<(2*order)+2; i++) {
@@ -110,48 +103,49 @@ void Diagram::test() {
 
 
 void Diagram::printall() {
-  std::cout <<  order << '\t' << drnd()  << '\t' << sw_pos << std::endl;
+  
+  std::cout <<  order << '\t' << drnd()  << std::endl;
   std::cout <<'\n';
-  for (int i=0 ;  i<times.size() ; i++){
-	for (int i2=0 ;  i2<times[0].size() ; i2++) {
+  for (unsigned int i=0 ;  i<times.size() ; i++){
+	for (unsigned int i2=0 ;  i2<times[0].size() ; i2++) {
 	  std::cout << times[i][i2] <<'\t';
 	}
 	std::cout <<'\n';
   }
   std::cout <<'\n';
-  for (int i=0 ;  i<phprop.size() ; i++){
-	for (int i2=0 ;  i2<phprop[0].size() ; i2++) {
+  for (unsigned int i=0 ;  i<phprop.size() ; i++){
+	for (unsigned int i2=0 ;  i2<phprop[0].size() ; i2++) {
 	  std::cout << phprop[i][i2] <<'\t';
 	}
 	std::cout <<'\n';
   }
   std::cout <<'\n';
-  for (int i=0 ;  i<elprop.size() ; i++){
-	for (int i2=0 ;  i2<elprop[0].size() ; i2++) {
+  for (unsigned int i=0 ;  i<elprop.size() ; i++){
+	for (unsigned int i2=0 ;  i2<elprop[0].size() ; i2++) {
 	  std::cout << elprop[i][i2] <<'\t';
 	}
 	std::cout <<'\n';
   }
   std::cout <<'\n';
-  
+
   std::cout << pr_arc <<'\t' << pr_tauin << '\t' << pr_taufin  << std::endl;
   std::cout <<'\n';
-  for (int i=0 ;  i<pr_tau1.size() ; i++){
+  for (unsigned int i=0 ;  i<pr_tau1.size() ; i++){
 	std::cout << pr_tau1[i] <<'\t';
 	std::cout <<'\n';
   }
   std::cout <<'\n';
-  for (int i=0 ;  i<pr_tau2.size() ; i++){
+  for (unsigned int i=0 ;  i<pr_tau2.size() ; i++){
 	std::cout << pr_tau2[i] <<'\t';
 	std::cout <<'\n';
   }
   std::cout <<'\n';
-  for (int i=0 ;  i<pr_q.size() ; i++){
+  for (unsigned int i=0 ;  i<pr_q.size() ; i++){
 	std::cout << pr_q[i] <<'\t';
 	std::cout <<'\n';
   }
   std::cout <<'\n';
-  for (int i=0 ;  i<pr_p.size() ; i++){
+  for (unsigned int i=0 ;  i<pr_p.size() ; i++){
 	std::cout << pr_p[i] <<'\t';
 	std::cout <<'\n';
   }

@@ -9,7 +9,7 @@
 
 #if defined(_OPENMP)
 #include <omp.h>
-#endif 
+#endif  
 
 namespace pt = boost::property_tree;
 using namespace std::chrono;
@@ -25,7 +25,8 @@ class oor_Probs: public std::exception {
 int main() {
   try{
 	#if defined(_OPENMP)
-	  const int nseeds = 4;
+	  //const int nseeds = omp_get_num_threads();
+	  const int nseeds = 1;
 	#else
 	  const int nseeds = 1;
 	#endif
@@ -35,9 +36,9 @@ int main() {
 	//Total Statistics and Data
 	std::vector<MatrixXd> Data_tot(nseeds);
 	  	
-	MatrixXd uds_tot = MatrixXd::Zero(9,6);
+	MatrixXd uds_tot = MatrixXd::Zero(11,6);
 	VectorXi os_tot = VectorXi::Zero(40);
-	VectorXd ts_tot = VectorXd::Zero(6);
+	VectorXd ts_tot = VectorXd::Zero(8);
 	
 	//constants and parameters
 	double onecore_time= 0;
@@ -60,7 +61,7 @@ int main() {
 		}
   
 		steady_clock::time_point time_begin = steady_clock::now();  //start time
-		VectorXd timestat = VectorXd::Zero(6);
+		VectorXd timestat = VectorXd::Zero(8);
   	
 		double nseconds;
 		double dt;
@@ -73,22 +74,17 @@ int main() {
 				double action = fp.drnd();
 			
 				if (action < fp.Prem) {
-				  /*
 				  steady_clock::time_point t_rem_be = steady_clock::now();
 				  fp.remove();
 				  steady_clock::time_point t_rem_end = steady_clock::now();
 				  timestat(3) += static_cast<double>((t_rem_end - t_rem_be).count())* steady_clock::period::num / steady_clock::period::den ;
-				  */
-				  
+				  				  
 				}
 				else if ((action-fp.Prem)<fp.Pins) {
-				  /*
 				  steady_clock::time_point t_ins_be= steady_clock::now();
 				  fp.insert();
 				  steady_clock::time_point t_ins_end= steady_clock::now();
 				  timestat(2) += static_cast<double>((t_ins_end - t_ins_be).count())* steady_clock::period::num / steady_clock::period::den ;
-				  */
-				  
 				}
 				else if ((action-fp.Prem-fp.Pins) < fp.Pct) {
 				  
@@ -96,32 +92,49 @@ int main() {
 				  fp.change_tau();
 				  steady_clock::time_point t_ct_end= steady_clock::now();
 				  timestat(0) += static_cast<double>((t_ct_end - t_ct_be).count())* steady_clock::period::num / steady_clock::period::den ;
-			/*
-				  steady_clock::time_point t_ctho_be= steady_clock::now();
-				  fp.ct();		//change taus in higher order
-				  steady_clock::time_point t_ctho_end= steady_clock::now();
-				  timestat(1) += static_cast<double>((t_ctho_end - t_ctho_be).count())* steady_clock::period::num / steady_clock::period::den ;
-			  */
 				}
 			
 				else if ((action-fp.Prem-fp.Pins-fp.Pct) < fp.Pdq) {
-				  /*
 				  steady_clock::time_point t_dq_be= steady_clock::now();
 				  fp.dq();
 				  steady_clock::time_point t_dq_end= steady_clock::now();
 				  timestat(5) += static_cast<double>((t_dq_end - t_dq_be).count())* steady_clock::period::num / steady_clock::period::den ;
 				
-				  */
 				}
 			
 				else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq) < fp.Psw) {
-				  /*
+				  
 				  steady_clock::time_point t_sw_be= steady_clock::now();
 				  fp.swap();
 				  steady_clock::time_point t_sw_end= steady_clock::now();
 				  timestat(4) += static_cast<double>((t_sw_end - t_sw_be).count())* steady_clock::period::num / steady_clock::period::den ;
-				*/
+				 
+				}
+				
+				else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq- fp.Psw) < fp.Pctho) {
 				  
+				  steady_clock::time_point t_ctho_be= steady_clock::now();
+				  fp.ct();
+				  steady_clock::time_point t_ctho_end= steady_clock::now();
+				  timestat(1) += static_cast<double>((t_ctho_end - t_ctho_be).count())* steady_clock::period::num / steady_clock::period::den ;
+				 
+				}
+				
+				else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq - fp.Psw - fp.Pctho) < fp.Piae) {
+				  
+				  steady_clock::time_point t_iae_be= steady_clock::now();
+				  fp.insatend();
+				  steady_clock::time_point t_iae_end= steady_clock::now();
+				  timestat(6) += static_cast<double>((t_iae_end - t_iae_be).count())* steady_clock::period::num / steady_clock::period::den ;
+				 
+				}
+				
+				else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq - fp.Psw - fp.Pctho - fp.Piae) < fp.Prae) {
+				  
+				  steady_clock::time_point t_rae_be= steady_clock::now();
+				  fp.rematend();
+				  steady_clock::time_point t_rae_end= steady_clock::now();
+				  timestat(7) += static_cast<double>((t_rae_end - t_rae_be).count())* steady_clock::period::num / steady_clock::period::den ;
 				}
 				
 				else { 
@@ -133,13 +146,10 @@ int main() {
 			  fp.measure(j);
 			}
 			fp.test();
+			std::cout << "# Test ok thread " << seed << std::endl;
 		  }
 		  		  
-		  //fp.status();
-		  std::cout << "# Test ok thread " << seed << std::endl;
-		  fp.printall();
-	
-		  fp.write();
+		  //fp.write();
 	
 		  steady_clock::time_point time_end = steady_clock::now();
 		  steady_clock::duration time_span = time_end-time_begin;
@@ -147,14 +157,14 @@ int main() {
 		  
 		  //fp.timestats(timestat/nseconds);
 		  
-		  fp.Stattofile(timestat/nseconds);
+		  //fp.Stattofile(timestat/nseconds);
 		  std::time_t dt_end;
 		  std::time(& dt_end);
 		  
 		  dt = std::difftime(dt_end, dt_be);
 		  
 		  
-		  std::cout << "# Time on core  " << nseconds << '\t' << dt << '\n' << std::endl;
+		  std::cout << "# Time on core  " << nseconds << '\t' << "dt  " << dt << '\n' << std::endl;
 		  
 		} while (nseconds < fp.RunTime - dt);
 		
@@ -214,20 +224,21 @@ int main() {
 	if (nseeds > 3) {
 	  for (int i=0; i<nseeds ; i++) {
 		all_orders.col(2) += (Data_tot[i].col(1).array()-all_orders.col(1)).pow(2); 
-		zero_order.col(2) += (Data_tot[i].col(2).array()-zero_order.col(1)).pow(2); 
+		zero_order.col(2) += (Data_tot[i].col(2).array()-zero_order.col(1)).pow(2);
 		first_order.col(2) += (Data_tot[i].col(3).array()-first_order.col(1)).pow(2); 
 		second_order.col(2) += (Data_tot[i].col(4).array()-second_order.col(1)).pow(2); 
 	  }
+	  
 	  double norm = 1/static_cast<double>(nseeds*(nseeds-1));
 	  all_orders.col(2) *= norm;
 	  zero_order.col(2) *= norm;
 	  first_order.col(2) *= norm;
 	  second_order.col(2) *= norm;
-	  all_orders.col(2).cwiseSqrt();
-	  zero_order.col(2).cwiseSqrt();
-	  first_order.col(2).cwiseSqrt();
-	  second_order.col(2).cwiseSqrt();
-	}
+	  all_orders.col(2) = all_orders.col(2).sqrt();
+	  zero_order.col(2) = zero_order.col(2).sqrt();
+	  first_order.col(2) = first_order.col(2).sqrt();
+	  second_order.col(2) = second_order.col(2).sqrt();
+	  }
 	  
 	std::ofstream all("data/all_orders");  
 	all << all_orders << '\n';
@@ -255,7 +266,7 @@ int main() {
     uds_outfile << "*************************************" << '\n';
     uds_outfile << "COLUMNS" << '\n' << "1:ATTEMPTED" << '\n' << "2:POSSIBLE" << '\n' << "3:REJECTED" << '\n' << "4:ACCEPTED" << '\n' << "5:ACCEPTANCE RATIO POSSIBLE" << '\n' << "6:ACCEPTANCE RATIO TOTAL" << '\n';
     uds_outfile << "*************************************" << '\n';
-    uds_outfile << "CHANGE TAU: " << '\t' << uds_tot.topRows(1) << '\n' << "CT IN HO: " << '\t' << uds_tot.block(7, 0, 1, 6) << '\n' << "INSERT: " << '\t' << uds_tot.block(1, 0, 1, 6) << '\n' << "REMOVE: " << '\t' << uds_tot.block(2, 0, 1, 6) << '\n' << "SWAP:   " << '\t' << uds_tot.block(3, 0, 1, 6) << '\n'<< "SWAPoocc: " << '\t' << uds_tot.block(4, 0, 1, 6) << '\n'<< "SWAPoc: " << '\t' << uds_tot.block(5, 0, 1, 6) << '\n'<< "SWAPco: " << '\t' << uds_tot.block(6, 0, 1, 6) << '\n' << "DQ:      " << '\t' << uds_tot.block(8, 0, 1, 6)<< '\n' << '\n';
+    uds_outfile << "CHANGE TAU: " << '\t' << uds_tot.topRows(1) << '\n' << "CT IN HO: " << '\t' << uds_tot.block(7, 0, 1, 6) << '\n' << "INSERT: " << '\t' << uds_tot.block(1, 0, 1, 6) << '\n' << "REMOVE: " << '\t' << uds_tot.block(2, 0, 1, 6) << '\n' << "SWAP:   " << '\t' << uds_tot.block(3, 0, 1, 6) << '\n'<< "SWAPoocc: " << '\t' << uds_tot.block(4, 0, 1, 6) << '\n'<< "SWAPoc: " << '\t' << uds_tot.block(5, 0, 1, 6) << '\n'<< "SWAPco: " << '\t' << uds_tot.block(6, 0, 1, 6) << '\n' << "DQ:      " << '\t' << uds_tot.block(8, 0, 1, 6)<< '\n' << "IAE:      " << '\t' << uds_tot.block(9, 0, 1, 6) << '\n' << "RAE :         " << '\t' << uds_tot.block(10, 0, 1, 6) << '\n' << '\n';
 	
 	MatrixXi orderprint(os_tot.size(),2);
 	orderprint << VectorXi::LinSpaced(os_tot.size(), 0, os_tot.size()-1), os_tot;
@@ -264,16 +275,16 @@ int main() {
 	os_outfile << orderprint  << '\n';
 	
 	ts_outfile << "Time Statistics [%]" << std:: endl;
-	ts_outfile << "CHANGE TAU:" << '\t' << ts_tot(0) << '\n' << "CT HO:     " << '\t' <<ts_tot(1)<< '\n' <<  "INSERT: " << '\t' << ts_tot(2) << '\n' << "REMOVE: " << '\t' << ts_tot(3) << '\n' <<  "SWAP:     " << '\t' << ts_tot(4) << '\n' << "DQ:      " << '\t' << ts_tot(5) << '\n';		
+	ts_outfile << "CHANGE TAU:" << '\t' << ts_tot(0) << '\n' << "CT HO:     " << '\t' <<ts_tot(1)<< '\n' <<  "INSERT: " << '\t' << ts_tot(2) << '\n' << "REMOVE: " << '\t' << ts_tot(3) << '\n' <<  "SWAP:     " << '\t' << ts_tot(4) << '\n' << "DQ:      " << '\t' << ts_tot(5) << '\n' << "IAE:      " << '\t' << ts_tot(6) << '\n' << "RAE :       " << '\t' << ts_tot(7) << '\n';		
 
 	uds_outfile.close();
 	os_outfile.close();
 	ts_outfile.close();
 	
-	std::system("rm -f ./data/*_core_*");  //removing the data from each core
+	int rem=std::system("rm -f ./data/*_core_*");  //removing the data from each core
 	
 	
-	std::cout << "# Analysing data, result = " << system("python3 data_ana.py") << std::endl;
+	std::cout << "# Analysing data, result = " << system("python3 data_ana.py /project/theorie/h/H.Guertner/Froehlich_Polaron/ana") << std::endl;
 	return 0;
   } catch (std::exception& e){
 	std::cerr << e.what() << std::endl;

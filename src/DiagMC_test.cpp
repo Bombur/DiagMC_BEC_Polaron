@@ -67,11 +67,21 @@ class ins_rem: public std::exception
   }
 };
 
+class maxoerr: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "Maximum Order does not hold!";
+  }
+};
+
+
 
 void DiagMC::test() {
   try{
 	//Diagram
 	diag.test(); 
+	if (diag.get_order() > maxord && maxord != -1) {throw maxoerr();}
 	
 	//tau
 	if (diag.get_tau() > taumax || diag.get_tau() < 0) {throw oor_tau();}
@@ -83,7 +93,7 @@ void DiagMC::test() {
 	  if (Data(i, 0)< (Data(i, 1) + Data(i, 2) + Data(i, 3))) {throw  greenerr();}
 	  CG0p += static_cast<double>(Data(i, 1));	  
 	}
-	
+	/*
 	for (int i=0; i< taubin; i++) {
 	  double G0deltatau = (exp(-(E*static_cast<double>(i)*taumax/static_cast<double>(taubin)))/E) *(1 - exp(-E*(taumax/static_cast<double>(taubin))));
 	  //std::cout << (G0deltatau/G0p * CG0p)<<'\t' << static_cast<double>(Data(i,1)) << '\t' << fabs((G0deltatau/G0p * CG0p) - static_cast<double>(Data(i,1))) << std::endl;
@@ -92,9 +102,10 @@ void DiagMC::test() {
 	  if (((G0deltatau/G0p) * CG0p) > 10000 && fabs((G0deltatau/G0p * CG0p) - static_cast<double>(Data(i,1))) > 0.05*(G0deltatau/G0p) * CG0p )  {throw fake_check();}
 	  if (((G0deltatau/G0p) * CG0p) > 100000 && fabs((G0deltatau/G0p * CG0p) - static_cast<double>(Data(i,1))) > 0.016*(G0deltatau/G0p) * CG0p )  {throw fake_check();}
 	}
-	
-	if (fabs(weight_calc() - global_weight) < 1e-8) {
-	  std::cout << weight_calc() << '\t' << global_weight << std::endl;  
+	*/
+	double weight_diff = fabs(weight_calc() - global_weight);
+	if (weight_diff > (0.0000001*global_weight)) {
+	  std::cout << weight_diff << '\t' << weight_calc() << '\t' << global_weight << std::endl;  
 	  throw weight_check();
 	}
 	
@@ -102,10 +113,11 @@ void DiagMC::test() {
 	for (int i = 0; i< 4; i++) {
 	  if (fabs(updatestat(i,1)- updatestat(i,2) -updatestat(i, 3)) >  0.001) {throw staterr();}
 	}
-	if (updatestat(1,3) <updatestat(2,3)) {throw ins_rem();}
+	if ((updatestat(1,3)+updatestat(9,3)) < (updatestat(2,3)+updatestat(10,3))) {throw ins_rem();}
 	
   }
   catch (std::exception& e){
+	std::cout << lu <<std::endl;
 	std::cerr << e.what() << std::endl;
 	exit(EXIT_FAILURE);
   }
@@ -118,7 +130,8 @@ double DiagMC::weight_calc() {
 	weight *= G0el(diag.get_p(i), diag.get_tfin(i), diag.get_tinit(i));   //G0(pi, ti+1, ti)
 	if (diag.get_link(i) > i) { 											//opening of an arc
 	  weight *= Dph(diag.get_tinit(diag.get_link(i)), diag.get_tinit(i));	//Dph
-	  weight *= alpha / vsq(vsub(diag.get_p(i), diag.get_p(i+1)));			//alpha/q^2
+	  weight *= alpha / vsq(vsub(diag.get_p(i-1), diag.get_p(i)));			//alpha/q^2
+	  weight /= pow(2*M_PI,3);
 	}
   }
   
