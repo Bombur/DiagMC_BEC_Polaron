@@ -64,9 +64,9 @@ int DiagMC::insert() {
   updatestat(1,1) +=1;		//possible
 
   // weight part	
-  double weight = G0el(diag.pr_p, diag.pr_tau2[0], diag.pr_tau1[0]);	//G0(new)
-  weight /= G0el(diag.get_p(diag.pr_arc), diag.pr_tau2[0], diag.pr_tau1[0]);	//G0(old)
-  weight *= Dph(diag.pr_tau2[0], diag.pr_tau1[0]);	//Phonon(new)
+  double weight = G0el(diag.pr_p, diag.pr_tau2.t, diag.pr_tau1.t);	//G0(new)
+  weight /= G0el(diag.get_p(diag.pr_arc), diag.pr_tau2.t, diag.pr_tau1.t);	//G0(old)
+  weight *= Dph(diag.pr_tau2.t, diag.pr_tau1.t);	//Phonon(new)
   weight *= alpha/vsq(diag.pr_q);
   weight /= pow((2.*M_PI), 3);
   
@@ -82,14 +82,14 @@ int DiagMC::insert() {
   weight *= (1. + n*2.); 		//insert selecting vertex
   
   weight *= diag.pr_taufin-diag.pr_tauin; //sample first vertex to insert
-  weight *= diag.pr_taufin-diag.pr_tau1[0]; //select second vertex to insert
+  weight *= diag.pr_taufin-diag.pr_tau1.t; //select second vertex to insert
 
   //select phonon momentum
   
   weight *= pow(dqins, 3);
   
-  //weight /= pow((diag.pr_tau2[0]-diag.pr_tau1[0])/2./M_PI, 3./2.) ;
-  //weight /= exp((-vsq(diag.pr_q)/2.) *(diag.pr_tau2[0]-diag.pr_tau1[0]));
+  //weight /= pow((diag.pr_tau2.t-diag.pr_tau1.t)/2./M_PI, 3./2.) ;
+  //weight /= exp((-vsq(diag.pr_q)/2.) *(diag.pr_tau2.t-diag.pr_tau1.t));
   
 
   if (drnd() < weight) {
@@ -110,10 +110,10 @@ int DiagMC::remove() {
   updatestat(2,1) +=1;		//possible
 
   // weight part	
-  double weight = G0el(diag.pr_p, diag.pr_tau2[0], diag.pr_tau1[0]);	//G0(new)
-  weight /= G0el(diag.get_p(diag.pr_arc), diag.pr_tau2[0], diag.pr_tau1[0]);	//G0(old)
-  weight /= Dph(diag.pr_tau2[0], diag.pr_tau1[0]);				  //Phonon(old)
-  weight /= alpha/vsq(vsub(diag.get_p(diag.pr_arc-1), diag.get_p(diag.pr_arc)));
+  double weight = G0el(diag.pr_p, diag.pr_tau2.t, diag.pr_tau1.t);	//G0(new)
+  weight /= G0el(diag.get_p(diag.pr_arc), diag.pr_tau2.t, diag.pr_tau1.t);	//G0(old)
+  weight /= Dph(diag.pr_tau2.t, diag.pr_tau1.t);				  //Phonon(old)
+  weight /= alpha/vsq(diag.get_p(diag.pr_arc-1)- diag.get_p(diag.pr_arc));
   weight *= pow((2.*M_PI), 3);
 
   double weight_diff = weight;
@@ -128,14 +128,14 @@ int DiagMC::remove() {
   weight *= (1. + n*2.); 		//remove selecting vertex
   
   weight /= diag.pr_taufin-diag.pr_tauin; //sample first vertex to insert
-  weight /= diag.pr_taufin-diag.pr_tau1[0]; //select second vertex to insert
+  weight /= diag.pr_taufin-diag.pr_tau1.t; //select second vertex to insert
 
   //select phonon momentum
   
   weight /= pow(dqins, 3);
   
-  //weight *= pow((diag.pr_tau2[0]-diag.pr_tau1[0])/2./M_PI, 3./2.) ;
-  //weight*= exp((-vsq(diag.get_q(diag.pr_arc))/2.) *(diag.pr_tau2[0]-diag.pr_tau1[0]));
+  //weight *= pow((diag.pr_tau2.t-diag.pr_tau1.t)/2./M_PI, 3./2.) ;
+  //weight*= exp((-vsq(diag.get_q(diag.pr_arc))/2.) *(diag.pr_tau2.t-diag.pr_tau1.t));
 				  
   
   if (drnd() < weight) {
@@ -225,12 +225,12 @@ int DiagMC::dq() {
 
   double weight = 1.;
   for (int i=0 ; i < (diag.get_link(diag.pr_arc) - diag.pr_arc); i++) {
-    weight *= G0el(vsub(diag.get_p(diag.pr_arc + i), diag.pr_q), diag.get_tfin(diag.pr_arc + i), diag.get_tinit(diag.pr_arc + i)); //G0el(neu)
+    weight *= G0el(diag.get_p(diag.pr_arc + i) - diag.pr_q, diag.get_tfin(diag.pr_arc + i), diag.get_tinit(diag.pr_arc + i)); //G0el(neu)
     weight /= G0el(diag.get_p(diag.pr_arc + i), diag.get_tfin(diag.pr_arc + i), diag.get_tinit(diag.pr_arc + i));					//G0el(alt)
   }
   //alpha term
-  std:: vector<double>  qold = vsub(diag.get_p(diag.pr_arc - 1), diag.get_p(diag.pr_arc)); 
-  weight /= vsq(vadd(qold, diag.pr_q)); //qold + dq
+  std:: array<double,3>  qold = diag.get_p(diag.pr_arc - 1)- diag.get_p(diag.pr_arc); 
+  weight /= vsq(qold + diag.pr_q); //qold + dq
   weight *= vsq(qold);
   
   
@@ -255,9 +255,9 @@ int DiagMC::insatend(){
   updatestat(9,1) +=1;		//possible
 
   // weight part	
-  double weight = G0el(diag.get_p(0), diag.pr_tau2[0], diag.pr_tau1[0]);	//G0(new) second last and last vertex
-  weight *= G0el(diag.pr_p, diag.pr_tau1[0], diag.pr_tauin);	//G0(new) 
-  weight *= Dph(diag.pr_tau1[0], diag.pr_tauin);	//Phonon(new)
+  double weight = G0el(diag.get_p(0), diag.pr_tau2.t, diag.pr_tau1.t);	//G0(new) second last and last vertex
+  weight *= G0el(diag.pr_p, diag.pr_tau1.t, diag.pr_tauin);	//G0(new) 
+  weight *= Dph(diag.pr_tau1.t, diag.pr_tauin);	//Phonon(new)
   weight *= alpha/vsq(diag.pr_q);
   weight /= pow((2.*M_PI), 3);
   
@@ -291,10 +291,10 @@ int DiagMC::rematend() {
 
   // weight part	
   double weight = 1.;
-  weight /= G0el(diag.get_p(diag.pr_arc), diag.pr_tau1[0], diag.pr_tauin);	//G0(old)
-  weight /= G0el(diag.get_p(diag.pr_arc+1), diag.pr_tau2[0], diag.pr_tau1[0]);	//G0(old)
-  weight /= Dph(diag.pr_tau1[0], diag.pr_tauin);				  //Phonon(old)
-  weight /= alpha/vsq(vsub(diag.get_p(diag.pr_arc-1), diag.get_p(diag.pr_arc)));
+  weight /= G0el(diag.get_p(diag.pr_arc), diag.pr_tau1.t, diag.pr_tauin);	//G0(old)
+  weight /= G0el(diag.get_p(diag.pr_arc+1), diag.pr_tau2.t, diag.pr_tau1.t);	//G0(old)
+  weight /= Dph(diag.pr_tau1.t, diag.pr_tauin);				  //Phonon(old)
+  weight /= alpha/vsq(diag.get_p(diag.pr_arc-1)- diag.get_p(diag.pr_arc));
   weight *= pow((2.*M_PI), 3);
   double weight_diff = weight;
 

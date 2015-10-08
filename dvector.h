@@ -1,40 +1,130 @@
-//exceptions
-#include <exception>
-#include <stdexcept>
+//exceptions 
+#include <assert.h>
 
 //io
 #include <iostream>
+#include <fstream>
 #include <string>
 
 //math and container
 #include <vector>
-#define _USE_MATH_DEFINES
+#include <array>
 #include <cmath>
+
+//template
+#include <type_traits>
 
 #ifndef __DVECTOR_H_INCLUDED__
 #define __DVECTOR_H_INCLUDED__
 
-class dnf_vecsize: public std::exception
-{
-  virtual const char* what() const throw()
-  {
-    return "Vector sizes do not fit!";
+//is_container()
+
+template <typename T1, std::size_t N = 0> struct is_container : std::false_type {};
+template <typename T1> struct is_container<std::vector<T1> > : std::true_type { };
+template <typename T1, std::size_t N> struct is_container<std::array<T1, N> > : std::true_type { };
+
+//is_number
+template<class T> struct is_number : std::integral_constant<bool, std::is_integral<T>::value ||std::is_floating_point<T>::value>::type {};
+
+template <typename vecT, typename std::enable_if<is_container<vecT>::value, int>::type = 0>
+vecT operator+=(vecT & lhs, const vecT & rhs){
+  assert(lhs.size()== rhs.size());
+  int it=0;
+  for (auto & x : lhs ){
+ 	  x += rhs[it];
+	  it++;
   }
-};
+  return lhs;
+}
 
-class no_propose: public std::exception
-{
-  virtual const char* what() const throw()
-  {
-    return "Nothing proposed!";
+template <typename vecT, typename std::enable_if<is_container<vecT>::value, int>::type = 0>
+vecT operator+(vecT lhs, const vecT & rhs){
+  return lhs += rhs;
+}
+
+template <typename vecT, typename std::enable_if<is_container<vecT>::value, int>::type = 0>
+vecT operator-=(vecT & lhs, const vecT & rhs){
+  assert(lhs.size()== rhs.size());
+  int it=0;
+  for (auto & x : lhs ){
+ 	  x -= rhs[it];
+	  it++;
   }
-};
+  return lhs;
+}
+ 
+template <typename vecT, typename std::enable_if<is_container<vecT>::value, int>::type = 0>
+vecT operator-(vecT lhs, const vecT & rhs){
+  return lhs -= rhs;
+}
 
-std::vector<double> vadd(const std::vector<double> & vec1, const std::vector<double> & vec2);
 
-std::vector<double> vsub(const std::vector<double> & vec1, const std::vector<double> & vec2);
+//product with scalar
+ 
+template <typename vecT, typename valT, typename std::enable_if<is_container<vecT>::value && is_number<valT>::value, int>::type = 0>
+vecT operator*=(vecT & lhs, const valT & rhs){
+  for (auto &x : lhs ){
+ 	  x *= rhs;
+  }
+  return lhs;
+}
 
-double vsq(const std::vector<double> & vec1);
+template <typename vecT, typename valT, typename std::enable_if<is_container<vecT>::value && is_number<valT>::value, int>::type = 0>
+vecT operator*(vecT lhs, const valT & rhs){
+  return lhs *= rhs;
+}
+
+template <typename vecT, typename valT, typename std::enable_if<is_container<vecT>::value && is_number<valT>::value, int>::type = 0>
+vecT operator*(const valT & lhs, vecT rhs){
+  return rhs *= lhs;
+}
+
+
+template <typename vecT, typename valT, typename std::enable_if<is_container<vecT>::value && is_number<valT>::value, int>::type = 0>
+vecT operator/=(vecT & lhs, const valT & rhs){
+  return lhs *= (1/rhs);
+}
+
+template <typename vecT, typename valT, typename std::enable_if<is_container<vecT>::value && is_number<valT>::value, int>::type = 0>
+vecT operator/(vecT lhs, const valT & rhs){
+  return lhs *= (1/rhs);
+}
+
+
+
+//square
+
+
+template <typename vecT, typename std::enable_if<is_container<vecT>::value, int>::type = 0>
+double vsq(const vecT & vec){
+  double out = 0;
+  for (auto x : vec) {
+	out += x*x;
+  }
+  return out;
+}
+
+
+
+//print
+template <typename vecT, typename std::enable_if<is_container<vecT>::value, int>::type = 0>
+std::ostream& operator<<(std::ostream& os, const vecT & vec) {
+  os<< "(";
+  auto it= vec.begin();
+  for (auto x : vec) {
+	if (it != vec.end()-1){ 
+	  os << x << ", ";
+	  it++;
+	} else {
+	  os << x;
+	}
+  }
+  os << ")";
+  return os;
+}
+
+
+
 
 #endif
 

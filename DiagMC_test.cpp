@@ -130,7 +130,7 @@ double DiagMC::weight_calc() {
 	weight *= G0el(diag.get_p(i), diag.get_tfin(i), diag.get_tinit(i));   //G0(pi, ti+1, ti)
 	if (diag.get_link(i) > i) { 											//opening of an arc
 	  weight *= Dph(diag.get_tinit(diag.get_link(i)), diag.get_tinit(i));	//Dph
-	  weight *= alpha / vsq(vsub(diag.get_p(i-1), diag.get_p(i)));			//alpha/q^2
+	  weight *= alpha / vsq(diag.get_p(i-1) - diag.get_p(i));			//alpha/q^2
 	  weight /= pow(2*M_PI,3);
 	}
   }

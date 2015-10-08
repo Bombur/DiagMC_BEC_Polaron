@@ -20,6 +20,8 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include "dvector.h"
+#include <array>
+#include "mystructs.h"
 
 #ifndef __DIAGRAM_H_INCLUDED__
 #define __DIAGRAM_H_INCLUDED__
@@ -27,35 +29,37 @@
 namespace pt = boost::property_tree;
 using namespace Eigen;
 
+
+
 class Diagram {
   private:
-	int order;
 	std::function<double()> drnd;
-	std::vector< std::vector<double> > times;
-	std::vector< std::vector<double> > phprop;
-	std::vector< std::vector<double> > elprop;
+	std::vector< vertex > times;
+	std::vector< std::array<double,3> > phprop; // to control the electron prop vector
+	std::vector< std::array<double,3> > elprop;
+	int order;
+	
 	  
   public:
 	Diagram();
-	Diagram(const double & p, const double & tau, const std::function<double()> & rnd);
 	void set(const double & p, const double & tau, const std::function<double()> & rnd);
 	 
 	int get_order() {return order;}
-	double get_tau() {return times[2*order+1][0];}
-	double get_tinit(const int & arc) {return times[arc][0];}
-	double get_tfin(const int & arc) {return times[arc+1][0];}
-	int get_link(const int & arc) {return (int)(times[arc][1]+0.5);}
-	std::vector<double> get_q(const int & arc) {return phprop[arc];}
-	std::vector<double> get_p(const int & arc) {return elprop[arc];}
+	double get_tau() {return times[2*order+1].t;}
+	double get_tinit(const int & arc) {return times[arc].t;}
+	double get_tfin(const int & arc) {return times[arc+1].t;}
+	int get_link(const int & arc) {return times[arc].link;}
+	std::array<double,3> get_q(const int & arc) {return phprop[arc];}
+	std::array<double,3> get_p(const int & arc) {return elprop[arc];}
 	
 	 
 	//proposing pr_ 
 	int pr_arc;
 	double pr_tauin, pr_taufin;
-	std::vector<double> pr_tau1;
-	std::vector<double> pr_tau2;
-	std::vector<double> pr_q;
-	std::vector<double> pr_p;
+	vertex pr_tau1;
+	vertex pr_tau2;
+	std::array<double,3> pr_q;
+	std::array<double,3> pr_p;
 	
 
 	//proposing

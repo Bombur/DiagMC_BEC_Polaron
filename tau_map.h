@@ -14,9 +14,10 @@
 //functions
 #include <functional>
 
-#ifndef __DVECTOR_H_INCLUDED__
-#define __DVECTOR_H_INCLUDED__
+#ifndef __TAUMAP_H_INCLUDED__
+#define __TAUMAP_H_INCLUDED__
 
+std::vector<double> discretize(std::
 
 
 

@@ -63,28 +63,26 @@ class swpos: public std::exception
 void Diagram::test() {
   try {
 	//printall();
-	if (times.size() != (2*order)+2) {throw dnf_vecsize();}
-	if (phprop.size() != times.size()-1) {throw dnf_vecsize();}
-	if (elprop.size() != phprop.size()) {throw dnf_vecsize();}
+	if (times.size() != (2*order)+2) {throw dnf_diagvec();}
+	if (phprop.size() != times.size()-1) {throw dnf_diagvec();}
+	if (elprop.size() != phprop.size()) {throw dnf_diagvec();}
 	
-	if ((int)(times[0][1]+0.5) != (2*order)+1) {throw timeserr();}
-	if ((int)(times[(2*order)+1][1]+0.5) != 0) {throw timeserr();}
+	if (times[0].link != (2*order)+1) {throw timeserr();}
+	if (times[(2*order)+1].link != 0) {throw timeserr();}
 	
 	for (int i = 0; i< 3; i++) {
-	  if (fabs(get_q(0).at(i) - get_q(2*order).at(i)) > 0.0000001) {throw phproperr();}
-	  if (fabs(get_p(0).at(i) - get_p(2*order).at(i)) > 0.0000001) {throw elproperr();}
+	  if (fabs(phprop[0][i] - phprop[2*order][i]) > 0.0000001) {throw phproperr();}
+	  if (fabs(elprop[0][i] - elprop[2*order][i]) > 0.0000001) {throw elproperr();}
 	}
 	
-	
-  
-	VectorXd tmp=VectorXd::Zero((2*order)+2);
+	VectorXi tmp=VectorXi::Zero((2*order)+2);
 	for (int i=0; i<(2*order)+2; i++) {
-	  tmp((int)(times[i][1]+0.5)) +=1.;
-	  if ((int)(times[i][1]+0.5) == i) {throw timeserr();}
+	  tmp(times[i].link) +=1;
+	  if (times[i].link == i) {throw timeserr();}
 	}
 	for (int i=0; i<(2*order)+1; i++) {
 
-	  if (times[i] > times[i+1]) {throw timeserr();}
+	  if (times[i].t > times[i+1].t) {throw timeserr();}
 	  for (int i2 = 0; i2< 3; i2++) {
 		if (fabs((get_p(i).at(i2)+get_q(i).at(i2)) - get_p(0).at(i2)) > 0.0000001)  {throw momerr();}
 
@@ -94,7 +92,7 @@ void Diagram::test() {
 	}
 	
 	for (int i=0; i<(2*order)+2; i++) {
-	  if ((int)(tmp(i)+0.5) != 1) {throw propopen();}
+	  if (tmp(i) != 1) {throw propopen();}
 	}
   } catch (std::exception& e) {
       std::cerr << e.what() << std::endl;
@@ -108,49 +106,35 @@ void Diagram::printall() {
   
   std::cout <<  order << '\t' << drnd()  << std::endl;
   std::cout <<'\n';
-  for (unsigned int i=0 ;  i<times.size() ; i++){
-	for (unsigned int i2=0 ;  i2<times[0].size() ; i2++) {
-	  std::cout << times[i][i2] <<'\t';
-	}
+  for (vertex i: times){
+	  std::cout << i.t <<'\t';
+	  std::cout << i.link <<'\t';
+	
 	std::cout <<'\n';
   }
   std::cout <<'\n';
-  for (unsigned int i=0 ;  i<phprop.size() ; i++){
-	for (unsigned int i2=0 ;  i2<phprop[0].size() ; i2++) {
-	  std::cout << phprop[i][i2] <<'\t';
-	}
-	std::cout <<'\n';
+  for (auto i : phprop){
+	  std::cout << i <<'\n';
   }
   std::cout <<'\n';
-  for (unsigned int i=0 ;  i<elprop.size() ; i++){
-	for (unsigned int i2=0 ;  i2<elprop[0].size() ; i2++) {
-	  std::cout << elprop[i][i2] <<'\t';
-	}
-	std::cout <<'\n';
+  for (auto i : elprop){
+	  std::cout<< i << '\n';
   }
   std::cout <<'\n';
 
   std::cout << pr_arc <<'\t' << pr_tauin << '\t' << pr_taufin  << std::endl;
   std::cout <<'\n';
-  for (unsigned int i=0 ;  i<pr_tau1.size() ; i++){
-	std::cout << pr_tau1[i] <<'\t';
+	std::cout << pr_tau1.t <<'\t';
+	std::cout << pr_tau1.link <<'\t';
 	std::cout <<'\n';
-  }
+	std::cout <<'\n';
+	std::cout << pr_tau2.t <<'\t';
+	std::cout << pr_tau2.link <<'\t';
+	std::cout <<'\n';
+	std::cout <<'\n';
+  std::cout << pr_q <<'\n';
   std::cout <<'\n';
-  for (unsigned int i=0 ;  i<pr_tau2.size() ; i++){
-	std::cout << pr_tau2[i] <<'\t';
-	std::cout <<'\n';
-  }
-  std::cout <<'\n';
-  for (unsigned int i=0 ;  i<pr_q.size() ; i++){
-	std::cout << pr_q[i] <<'\t';
-	std::cout <<'\n';
-  }
-  std::cout <<'\n';
-  for (unsigned int i=0 ;  i<pr_p.size() ; i++){
-	std::cout << pr_p[i] <<'\t';
-	std::cout <<'\n';
-  }
+  std::cout << pr_p <<'\n';
   std::cout <<std::endl;
   
 

@@ -1,6 +1,6 @@
 #include "DiagMC.h"
  
-double DiagMC::G0el(const std::vector< double > & p, const double & tfin, const double & tinit) {
+double DiagMC::G0el(const std::array< double, 3 > & p, const double & tfin, const double & tinit) {
   return exp(-((vsq(p)/2.) - mu)*(tfin-tinit));
 }
 

@@ -26,8 +26,11 @@
 //math and container
 #include "/project/theorie/h/H.Guertner/lib/Eigen/Eigen/Dense"
 #include <cmath>
+#include <vector>
+#include <array>
 #include "Diagram.h"
 #include "dvector.h"
+#include "mystructs.h"
  
 
 #ifndef __DIAGMC_H_INCLUDED__
@@ -49,7 +52,7 @@ class DiagMC {
 	
 	
 	//Calculation variables
-	MatrixXi Data;					//0:G(p,tau_i), 1:G0(p,tau_i), 2:G1(p,tau_i), 3:G2(p,tau_i)
+	ArrayXXi Data;					//0:G(p,tau_i), 1:G0(p,tau_i), 2:G1(p,tau_i), 3:G2(p,tau_i)
 	Diagram diag;
 	const double ctcor;		//maximum correction in ctho
 	const double qcor;		//maximum correction in ctho
@@ -58,8 +61,8 @@ class DiagMC {
 	
 			
 	//rows of stats: 0:change tau, 1:insert, 2:remove 3:swap, 4:swapoocc, 5:swapoc, 6:swapco, 7:ct_ho, 8:dq , 9:insatend, 10: rematend
-	MatrixXd  updatestat; 		//0:attempted, 1:possible, 2:rejected, 3:accepted, 4:acceptance ratio possible, 5:acceptance ratio total
-	VectorXi orderstat;
+	ArrayXXd  updatestat; 		//0:attempted, 1:possible, 2:rejected, 3:accepted, 4:acceptance ratio possible, 5:acceptance ratio total
+	ArrayXi orderstat;
 	
 	//io variables
 	std::string path;
@@ -102,12 +105,12 @@ class DiagMC {
 	void measure(const int & whichmeas);
 	
 	//DiagMC_estimator.cpp
-	double G0el(const std::vector< double > & p, const double & tfin, const double & tinit);
+	double G0el(const std::array< double, 3 > & p, const double & tfin, const double & tinit);
 	double Dph(const double & tfin, const double & tinit);
 	
 	//DiagMC_io.cpp
 	void write();
-	void Stattofile(const VectorXd &);
+	void Stattofile(const ArrayXd &);
 	
 		
 	//void status();
@@ -116,9 +119,9 @@ class DiagMC {
 	//void timestats(const VectorXd &);
 	
 	//for multible cores
-	MatrixXd get_Data();
-	MatrixXd get_uds() {return updatestat;}
-	MatrixXi get_os() {return orderstat;}
+	ArrayXXd get_Data();
+	ArrayXXd get_uds() {return updatestat;}
+	ArrayXi get_os() {return orderstat;}
 	
 	 
 	//DiagMC_test.cpp

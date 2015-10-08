@@ -34,16 +34,16 @@ LDFLAGS= -fopenmp -pg
 INC=/project/theorie/h/H.Guertner/lib
 
 #Sources
-SOURCE=dvector.cpp DiagMC_run.cpp DiagMC.cpp DiagMC_config.cpp DiagMC_io.cpp DiagMC_updates.cpp DiagMC_estimator.cpp DiagMC_test.cpp Diagram_test.cpp Diagram.cpp
+SOURCE=mystructs.cpp dvector.cpp DiagMC_run.cpp DiagMC.cpp DiagMC_config.cpp DiagMC_io.cpp DiagMC_updates.cpp DiagMC_estimator.cpp DiagMC_test.cpp Diagram_test.cpp Diagram.cpp
 
 #Objects
 OBJ= $(SOURCE:.cpp=.o)
 
 #Header
-DEPS= DiagMC.h Diagram.h dvector.h
+DEPS= DiagMC.h Diagram.h dvector.h mystructs.h
 
 #Executeable
-EXE= ../../DiagMC_FP
+EXE= ../DiagMC_BEC
 
 #----------------------------------------------
 

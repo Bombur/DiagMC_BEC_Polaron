@@ -31,12 +31,12 @@ DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>(
 	std::uniform_real_distribution<double> uni_dist2(0,1);
 	drnd = std::bind ( uni_dist2, generator);
 	
-	Data = MatrixXi::Zero(taubin, 4);
+	Data = ArrayXXi::Zero(taubin, 4);
 	
 	diag.set(p, config.get<double>("Tau_start"), drnd);
   
-	updatestat = MatrixXd::Zero(11,6);
-	orderstat = VectorXi::Zero(40);
+	updatestat = ArrayXXd::Zero(11,6);
+	orderstat = ArrayXi::Zero(40);
   
 	std::stringstream convert, convert2, convert3, convert4, convert5, convert6, convert7; //p, mu, taumax, alpha, wp, RunTime
 	convert<<p;

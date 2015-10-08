@@ -21,7 +21,7 @@ void DiagMC::write() {
 	//long long tmp=Datafile.tellp();
 	//if (Datafile_pos!=0) {throw filepos();}
 	
-	MatrixXd  output(taubin, 5);
+	ArrayXXd  output(taubin, 5);
 	
 	int CG0p = 0;
 	for (int i=0; i< taubin; i++) {
@@ -104,8 +104,8 @@ void DiagMC::timestats(const VectorXd & timestat) {
 }
 */
   
-MatrixXd DiagMC::get_Data() {
-  MatrixXd  output(taubin, 5);
+ArrayXXd DiagMC::get_Data() {
+  ArrayXXd  output(taubin, 5);
 	
   int CG0p = 0;
   for (int i=0; i< taubin; i++) {
