@@ -321,16 +321,38 @@ int DiagMC::rematend() {
 	
 
 
-void DiagMC::measure(const int & whichstep) {
+int DiagMC::measure() {
+#ifdef SELFENERGY
+  if (diag.get_order() > 1) {
+	if (diag.is_reducible()) {return 0;}
+  }
+  if (diag.get_order() > 1) {
+	//all
+	Data((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin)), 0) +=1;
+	if (diag.get_order() == 2) {
+	  //second order
+	  Data((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin)), 3) += 1;
+	}
+  } else {
+	//first order
+	if (diag.get_order() == 1) {
+	  Data((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin)), 2) += 1;
+	}
+	//zero order
+	if (diag.get_order() == 0) {
+	  Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 1) += 1;
+	}
+  }
+ 
+#else
   Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 0) +=1;
-  if (diag.get_order() < 2) {Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), diag.get_order()+1) += 1;}
+  if (diag.get_order() < 3) {Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), diag.get_order()+1) += 1;}
   if (diag.get_order() ==2 && vsq(diag.get_q(2)) < 0.00000000000001) {	
 	Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), diag.get_order()+1) += 1;
   }
-  
+#endif
   if (diag.get_order() < orderstat.size()){
 	orderstat(diag.get_order()) +=1;
   }
-   
-} 
-
+  return 1;
+}

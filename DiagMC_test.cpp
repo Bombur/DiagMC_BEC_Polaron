@@ -90,7 +90,11 @@ void DiagMC::test() {
 	//if (Data((int)(drnd()*taubin), 0) == 0) {throw data_empty();}
 	double CG0p = 0;
 	for (int i=0; i< taubin; i++) {
+#ifdef SELFENERGY
+	  if (Data(i, 0)<  Data(i, 3)) {throw  greenerr();}
+#else
 	  if (Data(i, 0)< (Data(i, 1) + Data(i, 2) + Data(i, 3))) {throw  greenerr();}
+#endif
 	  CG0p += static_cast<double>(Data(i, 1));	  
 	}
 	/*

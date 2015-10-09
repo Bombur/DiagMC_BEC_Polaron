@@ -136,6 +136,12 @@ void Diagram::printall() {
   std::cout <<'\n';
   std::cout << pr_p <<'\n';
   std::cout <<std::endl;
-  
+}
 
+bool Diagram::is_reducible() {
+  auto p0 = elprop[0];
+  for (int i = 2; i < 2*order; i+=2 ) {
+	if (vsq(elprop[i]-p0) < 1e-8) {return true;}
+  }
+  return false;  
 }

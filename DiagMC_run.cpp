@@ -18,8 +18,8 @@ using namespace Eigen;
 
 int main() {
 	#if defined(_OPENMP)
-	  //const int nseeds = omp_get_num_threads();
-	  const int nseeds = 8;
+	  const int nseeds = omp_get_max_threads();
+	  //const int nseeds = 1;
 	#else
 	  const int nseeds = 1;
 	#endif
@@ -52,111 +52,120 @@ int main() {
 		{
 		  std::cout << "# Initialize thread " << seed << std::endl;
 		}
-  
+		
+		//time control
 		steady_clock::time_point time_begin = steady_clock::now();  //start time
-		ArrayXd timestat = VectorXd::Zero(8);
+		ArrayXd timestat = ArrayXd::Zero(8);
+		steady_clock::time_point dt_be = steady_clock::now();
   	
-		double nseconds;
-		double dt;
+		double nseconds =0.;
+		double dt= 0.;
+		
+		//measure control
+		int meas =0;
+		
+		//iterator
+		int it= 1;
 		do {
-		  std::time_t dt_be;
-		  std::time(& dt_be);
-		  for (int i=0; i<fp.Write_its; i++) {
-			for (int j=0; j<fp.Test_its; j++) {
-			  for (int k=0; k<fp.Meas_its; k++) {
-				double action = fp.drnd();
+		  double action = fp.drnd();
 			
-				if (action < fp.Prem) {
-				  steady_clock::time_point t_rem_be = steady_clock::now();
-				  fp.remove();
-				  steady_clock::time_point t_rem_end = steady_clock::now();
-				  timestat(3) += static_cast<double>((t_rem_end-t_rem_be).count())* steady_clock::period::num / steady_clock::period::den ;
-				  				  
-				}
-				else if ((action-fp.Prem)<fp.Pins) {
-				  steady_clock::time_point t_ins_be= steady_clock::now();
-				  fp.insert();
-				  steady_clock::time_point t_ins_end = steady_clock::now();
-				  timestat(2) += static_cast<double>((t_ins_end-t_ins_be).count())* steady_clock::period::num / steady_clock::period::den ;
-				}
-				else if ((action-fp.Prem-fp.Pins) < fp.Pct) {
-				  
-				  steady_clock::time_point t_ct_be= steady_clock::now();
-				  fp.change_tau();
-				  steady_clock::time_point t_ct_end = steady_clock::now();
-				  timestat(0) += static_cast<double>((t_ct_end-t_ct_be).count())* steady_clock::period::num / steady_clock::period::den ;
-				}
-			
-				else if ((action-fp.Prem-fp.Pins-fp.Pct) < fp.Pdq) {
-				  steady_clock::time_point t_dq_be= steady_clock::now();
-				  fp.dq();
-				  steady_clock::time_point t_dq_end = steady_clock::now();
-				  timestat(5) += static_cast<double>((t_dq_end-t_dq_be).count())* steady_clock::period::num / steady_clock::period::den ;
-				
-				}
-			
-				else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq) < fp.Psw) {
-				  
-				  steady_clock::time_point t_sw_be= steady_clock::now();
-				  fp.swap();
-				  steady_clock::time_point t_sw_end = steady_clock::now();
-				  timestat(4) += static_cast<double>((t_sw_end-t_sw_be).count())* steady_clock::period::num / steady_clock::period::den ;
-				 
-				}
-				
-				else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq- fp.Psw) < fp.Pctho) {
-				  
-				  steady_clock::time_point t_ctho_be= steady_clock::now();
-				  fp.ct();
-				  steady_clock::time_point t_ctho_end = steady_clock::now();
-				  timestat(1) += static_cast<double>((t_ctho_end-t_ctho_be).count())* steady_clock::period::num / steady_clock::period::den ;
-				 
-				}
-				
-				else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq - fp.Psw - fp.Pctho) < fp.Piae) {
-				  
-				  steady_clock::time_point t_iae_be= steady_clock::now();
-				  fp.insatend();
-				  steady_clock::time_point t_iae_end = steady_clock::now();
-				  timestat(6) += static_cast<double>((t_iae_end-t_iae_be).count())* steady_clock::period::num / steady_clock::period::den ;
-				 
-				}
-				
-				else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq - fp.Psw - fp.Pctho - fp.Piae) < fp.Prae) {
-				  
-				  steady_clock::time_point t_rae_be = steady_clock::now();
-				  fp.rematend();
-				  steady_clock::time_point t_rae_end = steady_clock::now();
-				  timestat(7) += static_cast<double>((t_rae_end-t_rae_be).count())* steady_clock::period::num / steady_clock::period::den ;
-				}
-				
-				else { 
-				  assert(0);
-				}
-			
-			
-			  }
-			  fp.measure(j);
-			}
-			fp.test();
-			std::cout << "# Test ok thread " << seed << std::endl;
+		  if (action < fp.Prem) {
+			steady_clock::time_point t_rem_be = steady_clock::now();
+			fp.remove();
+			steady_clock::time_point t_rem_end = steady_clock::now();
+			timestat(3) += static_cast<double>((t_rem_end-t_rem_be).count())* steady_clock::period::num / steady_clock::period::den ;
+							
 		  }
-		  		  
-		  //fp.write();
-		  steady_clock::time_point time_end = steady_clock::now();
-		  nseconds = duration_cast<seconds>(time_end-time_begin).count();
+		  else if ((action-fp.Prem)<fp.Pins) {
+			steady_clock::time_point t_ins_be= steady_clock::now();
+			fp.insert();
+			steady_clock::time_point t_ins_end = steady_clock::now();
+			timestat(2) += static_cast<double>((t_ins_end-t_ins_be).count())* steady_clock::period::num / steady_clock::period::den ;
+		  }
+		  else if ((action-fp.Prem-fp.Pins) < fp.Pct) {
+			
+			steady_clock::time_point t_ct_be= steady_clock::now();
+			fp.change_tau();
+			steady_clock::time_point t_ct_end = steady_clock::now();
+			timestat(0) += static_cast<double>((t_ct_end-t_ct_be).count())* steady_clock::period::num / steady_clock::period::den ;
+		  }
+			
+		  else if ((action-fp.Prem-fp.Pins-fp.Pct) < fp.Pdq) {
+			steady_clock::time_point t_dq_be= steady_clock::now();
+			fp.dq();
+			steady_clock::time_point t_dq_end = steady_clock::now();
+			timestat(5) += static_cast<double>((t_dq_end-t_dq_be).count())* steady_clock::period::num / steady_clock::period::den ;
+				
+		  }
+			
+		  else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq) < fp.Psw) {
+				  
+			steady_clock::time_point t_sw_be= steady_clock::now();
+			fp.swap();
+			steady_clock::time_point t_sw_end = steady_clock::now();
+			timestat(4) += static_cast<double>((t_sw_end-t_sw_be).count())* steady_clock::period::num / steady_clock::period::den ;
+				 
+		  }
+				
+		  else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq- fp.Psw) < fp.Pctho) {
+				  
+			steady_clock::time_point t_ctho_be= steady_clock::now();
+			fp.ct();
+			steady_clock::time_point t_ctho_end = steady_clock::now();
+			timestat(1) += static_cast<double>((t_ctho_end-t_ctho_be).count())* steady_clock::period::num / steady_clock::period::den ;
+				 
+		  }
+				
+		  else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq - fp.Psw - fp.Pctho) < fp.Piae) {
+				  
+			steady_clock::time_point t_iae_be= steady_clock::now();
+			fp.insatend();
+			steady_clock::time_point t_iae_end = steady_clock::now();
+			timestat(6) += static_cast<double>((t_iae_end-t_iae_be).count())* steady_clock::period::num / steady_clock::period::den ;
+				 
+		  }
+				
+		  else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq - fp.Psw - fp.Pctho - fp.Piae) < fp.Prae) {
+				  
+			steady_clock::time_point t_rae_be = steady_clock::now();
+			fp.rematend();
+			steady_clock::time_point t_rae_end = steady_clock::now();
+			timestat(7) += static_cast<double>((t_rae_end-t_rae_be).count())* steady_clock::period::num / steady_clock::period::den ;
+		  }
+		  else { 
+			assert(0);
+		  }
+			
+		  if ((it%fp.Meas_its) ==0) {
+			meas += fp.measure();
+		  }
+			
+		  if ( (it%fp.Test_its) ==0) {
+			fp.test();
+#ifdef SELFENERGY
+			std::cout << "# Measurement check " << meas << '\t' << it/fp.Meas_its << std::endl;
+#endif
+			std::cout << "# Test ok thread " << seed << std::endl;
+			
+		  }
 		  
-		  //fp.timestats(timestat/nseconds);
+		  if ( (it%fp.Write_its) ==0) {
+			//fp.write();
+			//fp.timestats(timestat/nseconds);
+		  	//fp.Stattofile(timestat/nseconds);
+			
+			//time 
+			steady_clock::time_point time_end = steady_clock::now();
+			nseconds = duration_cast<seconds>(time_end-time_begin).count();
+		  	steady_clock::time_point dt_end = steady_clock::now();
+			dt = duration_cast<seconds>(dt_end-dt_be).count();
 		  
-		  //fp.Stattofile(timestat/nseconds);
-		  std::time_t dt_end;
-		  std::time(& dt_end);
+			std::cout << "# " << seed<<  ": Time on core  " << nseconds << '\t' << "dt  " << dt << '\n' << std::endl;
+			
+			dt_be = steady_clock::now();
+		  }	
 		  
-		  dt = std::difftime(dt_end, dt_be);
-		  
-		  
-		  std::cout << "# Time on core  " << nseconds << '\t' << "dt  " << dt << '\n' << std::endl;
-		  
+		  it++;
 		} while (nseconds < fp.RunTime - dt);
 		
 		
@@ -275,7 +284,7 @@ int main() {
 	int rem=std::system("rm -f ./data/*_core_*");  //removing the data from each core
 	
 	
-	std::cout << "# Analysing data, result = " << system("python3 data_ana.py /project/theorie/h/H.Guertner/Froehlich_Polaron/ana") << std::endl;
+	std::cout << "# Analysing data, result = " << system("python3 data_ana.py /project/theorie/h/H.Guertner/BEC_Polaron/ana") << std::endl;
 	return 0;
 }
 

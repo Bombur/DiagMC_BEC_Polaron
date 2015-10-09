@@ -30,7 +30,7 @@ namespace pt = boost::property_tree;
 using namespace Eigen;
 
 
-
+ 
 class Diagram {
   private:
 	std::function<double()> drnd;
@@ -86,6 +86,7 @@ class Diagram {
 	//tests
 	void test();
 	void printall(); 
+	bool is_reducible();
 	
 	
 };

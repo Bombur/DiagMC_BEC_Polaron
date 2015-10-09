@@ -112,7 +112,14 @@ ArrayXXd DiagMC::get_Data() {
 	CG0p += Data(i, 1);
 	output(i, 0) = (static_cast<double>(i)+0.5)*taumax/static_cast<double>(taubin);
   }
+ 
+
+#ifdef SELFENERGY
+  output.rightCols(4)=Data.cast<double>()/static_cast<double>(CG0p)*static_cast<double>(taubin)/taumax;
+  //zero order
+  output.col(2)*= G0p;
+#else
   output.rightCols(4)=Data.cast<double>()*(G0p/static_cast<double>(CG0p))*static_cast<double>(taubin)/taumax;
-	
+#endif	
   return output;	
 }

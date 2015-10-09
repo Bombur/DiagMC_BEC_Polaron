@@ -76,7 +76,7 @@ class DiagMC {
 	//long long ts_pos;
 	
 	//test variables
-	double global_weight;
+	double global_weight; 
 	std::string lu;				//last update
 	
   public:
@@ -102,7 +102,7 @@ class DiagMC {
 	int dq();
 	int insatend();
 	int rematend();
-	void measure(const int & whichmeas);
+	int measure();
 	
 	//DiagMC_estimator.cpp
 	double G0el(const std::array< double, 3 > & p, const double & tfin, const double & tinit);
@@ -114,7 +114,7 @@ class DiagMC {
 	
 		
 	//void status();
-	//void updatestats();
+	//void updatestats(); 
 	//void orderstats();
 	//void timestats(const VectorXd &);
 	

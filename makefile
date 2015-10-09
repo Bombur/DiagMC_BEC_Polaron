@@ -1,10 +1,12 @@
+DEFS = -DSELFENERGY
+
 SHELL = /bin/sh
 
 .SUFFIXES:
 .SUFFIXES: .cpp .o .h 
 
 # Compiler
-CC=g++ -g -std=c++11 
+CC=g++ -g -std=c++11 $(DEFS)
 
 #Compiler Options
 WARNINGS = -Wall -Wextra -Wpointer-arith  -Wcast-qual -Wcast-align \
