@@ -9,6 +9,7 @@
 
 struct arch {
   std::array<double,3> mom;
+  int beg;
   int link;
 };
 

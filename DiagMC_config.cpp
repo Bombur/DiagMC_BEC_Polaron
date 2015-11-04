@@ -16,8 +16,8 @@ class openwritefile: public std::exception {
   }
 };
 
-DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>("Momentum")), mu(config.get<double>("Chemical_Potential")), taumax(config.get<double>("Tau_max")), taubin(config.get<int>("Tau_bin")),alpha(2*sqrt(2)*M_PI*config.get<double>("Coupling_Strength")), omegap(config.get<double>("Omega_Phonon")), maxord(config.get<double>("Max_Order")),  
-										ctcor(config.get<double>("Correction_tau")),  qcor(config.get<double>("Correction_dq")),  dtins(config.get<double>("Insert_at_End_DT")), dqins(config.get<double>("Insert_at_End_DQ")),
+DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>("Momentum")), qc(config.get<double>("Q_Cutoff")), mu(config.get<double>("Chemical_Potential")), taumax(config.get<double>("Tau_max")), taubin(config.get<int>("Tau_bin")), alpha(config.get<double>("Alpha")), relm(config.get<double>("Impurity_Mass")), maxord(config.get<double>("Max_Order")),  
+										ctcor(config.get<double>("Correction_tau")),  qcor(config.get<double>("Correction_dq")),  dtins(config.get<double>("Insert_FP_DT")), dqins(config.get<double>("Insert_FP_DQ")), fw(config.get<double>("Fake_Weight")),
 										Prem(config.get<double>("Remove_Probability")), Pins(config.get<double>("Insert_Probability")), Pct(config.get<double>("Change_tau_Probability")), Pctho(config.get<double>("Change_tau_in_HO_Probability")), Psw(config.get<double>("Swap_Probability")), Pdq(config.get<double>("DQ_Probability")), Piae(config.get<double>("IAE_Probability")), Prae(config.get<double>("RAE_Probability")),
 										Meas_its(config.get<int>("Its_per_Measure")), Test_its(config.get<int>("Its_per_Test")), Write_its(config.get<int>("Its_per_Write")), RunTime(config.get<int>("RunTime")) { 
   try{
@@ -25,13 +25,17 @@ DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>(
 	
 	E = pow(p,2.)/2. - mu;
 	G0p = (1.-exp(-E*taumax))/E;
+	
+#ifdef FP
+	wp = config.get<int>("FP_Omega");
+#endif
   
 	//Random Number Generator
 	std::mt19937 generator (seed);
 	std::uniform_real_distribution<double> uni_dist2(0,1);
 	drnd = std::bind ( uni_dist2, generator);
 	
-	Data = ArrayXXi::Zero(taubin, 4);
+	Data = ArrayXXi::Zero(taubin, 5);
 	
 	diag.set(p, config.get<double>("Tau_start"), drnd);
   
@@ -43,7 +47,7 @@ DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>(
 	convert2<<mu;
 	convert3<<taumax;
 	convert4<<alpha;
-	convert5<<omegap;
+	convert5<<relm;
 	convert6<<RunTime;
 	convert7<<seed;
 	path=config.get<std::string>("Path");

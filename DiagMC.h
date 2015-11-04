@@ -32,7 +32,6 @@
 #include "dvector.h"
 #include "mystructs.h"
  
-
 #ifndef __DIAGMC_H_INCLUDED__
 #define __DIAGMC_H_INCLUDED__
 
@@ -41,23 +40,28 @@ using namespace Eigen;
 
 class DiagMC {
   private:
-	const double p, mu;			//mu and initial p 		
+	const double p, mu;			//mu and initial p 	
+	const double qc;
 	const double taumax;			//imaginary time cut off
 	const int taubin;			//bins für 0 bis tau
 	const double alpha; 					//coupling strength
-	const double omegap;
+	const double relm; 		// mI/mB relative mass
 	double E;
 	double G0p;				//Green's Function G0(p)
 	const int maxord;				//maximum order
 	
+#ifdef FP
+	double wp; //Froehlich Polaron Omega
+#endif
 	
 	//Calculation variables
 	ArrayXXi Data;					//0:G(p,tau_i), 1:G0(p,tau_i), 2:G1(p,tau_i), 3:G2(p,tau_i)
 	Diagram diag;
 	const double ctcor;		//maximum correction in ctho
-	const double qcor;		//maximum correction in ctho
+	const double qcor;		//maximum correction in dq
 	const double dtins;			// for insert at end
 	const double dqins;			// for insert at endend
+	const double fw;  			// fake weight (correction for G0) 
 	
 			
 	//rows of stats: 0:change tau, 1:insert, 2:remove 3:swap, 4:swapoocc, 5:swapoc, 6:swapco, 7:ct_ho, 8:dq , 9:insatend, 10: rematend
@@ -106,7 +110,8 @@ class DiagMC {
 	
 	//DiagMC_estimator.cpp
 	double G0el(const std::array< double, 3 > & p, const double & tfin, const double & tinit);
-	double Dph(const double & tfin, const double & tinit);
+	double Dph(const std::array< double, 3 > & q, const double & tfin, const double & tinit);
+	double Vq2(const std::array< double, 3 > & q);
 	
 	//DiagMC_io.cpp
 	void write();
@@ -128,6 +133,7 @@ class DiagMC {
 	void test(); 
 	double weight_calc();
 	void printall();
+	void printdiag();
 };
 
 

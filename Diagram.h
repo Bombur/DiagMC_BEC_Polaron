@@ -5,7 +5,7 @@
 //io
 #include <iostream>
 #include <fstream>
-#include <string>
+#include <string> 
  
 //random
 #include <random>
@@ -14,6 +14,7 @@
 //exceptions
 #include <exception>
 #include <stdexcept>
+#include <assert.h>
 
 //math and container
 #include "/project/theorie/h/H.Guertner/lib/Eigen/Eigen/Dense"
@@ -22,6 +23,7 @@
 #include "dvector.h"
 #include <array>
 #include "mystructs.h"
+#include <algorithm>
 
 #ifndef __DIAGRAM_H_INCLUDED__
 #define __DIAGRAM_H_INCLUDED__
@@ -37,6 +39,7 @@ class Diagram {
 	std::vector< vertex > times;
 	std::vector< std::array<double,3> > phprop; // to control the electron prop vector
 	std::vector< std::array<double,3> > elprop;
+	//std::vector< arch> qs;
 	int order;
 	
 	  
@@ -87,6 +90,7 @@ class Diagram {
 	void test();
 	void printall(); 
 	bool is_reducible();
+	int arch_num(const int &);
 	
 	
 };

@@ -132,9 +132,10 @@ double DiagMC::weight_calc() {
   
   for (int i=1; i< 1+2*diag.get_order(); i++) {
 	weight *= G0el(diag.get_p(i), diag.get_tfin(i), diag.get_tinit(i));   //G0(pi, ti+1, ti)
-	if (diag.get_link(i) > i) { 											//opening of an arc
-	  weight *= Dph(diag.get_tinit(diag.get_link(i)), diag.get_tinit(i));	//Dph
-	  weight *= alpha / vsq(diag.get_p(i-1) - diag.get_p(i));			//alpha/q^2
+	if (diag.get_link(i) > i) { //opening of an arc
+	  std::array<double, 3> q = diag.get_p(i-1)-diag.get_p(i);
+	  weight *= Dph(q, diag.get_tinit(diag.get_link(i)), diag.get_tinit(i));	//Dph
+	  weight *= Vq2(q);			//
 	  weight /= pow(2*M_PI,3);
 	}
   }
@@ -150,7 +151,7 @@ void DiagMC::printall(){
   std::cout << taumax <<'\n';
   std::cout << taubin <<'\n';
   std::cout << alpha <<'\n';
-  std::cout << omegap <<'\n';
+  std::cout << relm <<'\n';
   std::cout << E <<'\n';
   std::cout << G0p <<'\n';
   std::cout  <<'\n';
@@ -165,4 +166,8 @@ void DiagMC::printall(){
   }
   std::cout<<'\n' << CG0p <<std::endl;
   
+}
+
+void DiagMC::printdiag() {
+ diag.printall(); 
 }

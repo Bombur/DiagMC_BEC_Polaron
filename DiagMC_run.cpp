@@ -119,7 +119,7 @@ int main() {
 		  else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq - fp.Psw - fp.Pctho) < fp.Piae) {
 				  
 			steady_clock::time_point t_iae_be= steady_clock::now();
-			fp.insatend();
+			//fp.insatend();
 			steady_clock::time_point t_iae_end = steady_clock::now();
 			timestat(6) += static_cast<double>((t_iae_end-t_iae_be).count())* steady_clock::period::num / steady_clock::period::den ;
 				 
@@ -128,7 +128,7 @@ int main() {
 		  else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq - fp.Psw - fp.Pctho - fp.Piae) < fp.Prae) {
 				  
 			steady_clock::time_point t_rae_be = steady_clock::now();
-			fp.rematend();
+			//fp.rematend();
 			steady_clock::time_point t_rae_end = steady_clock::now();
 			timestat(7) += static_cast<double>((t_rae_end-t_rae_be).count())* steady_clock::period::num / steady_clock::period::den ;
 		  }
@@ -167,7 +167,7 @@ int main() {
 		  
 		  it++;
 		} while (nseconds < fp.RunTime - dt);
-		
+		fp.printdiag();
 		
 		
 		#pragma omp critical  // to have the same staring point
@@ -213,11 +213,17 @@ int main() {
 	first_order.col(1) /=  static_cast<double>(nseeds);
 	
 	//second order
-	ArrayXXd second_order(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
-	second_order << Data_tot[0].col(0) , ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
+	ArrayXXd second_ordera(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
+	second_ordera << Data_tot[0].col(0) , ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
 	for (int i =0; i < nseeds ; i++)
-	  second_order.col(1) += Data_tot[i].col(4);
-	second_order.col(1) /=  static_cast<double>(nseeds);
+	  second_ordera.col(1) += Data_tot[i].col(4);
+	second_ordera.col(1) /=  static_cast<double>(nseeds);
+	
+	ArrayXXd second_orderb(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
+	second_orderb << Data_tot[0].col(0) , ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
+	for (int i =0; i < nseeds ; i++)
+	  second_orderb.col(1) += Data_tot[i].col(5);
+	second_orderb.col(1) /=  static_cast<double>(nseeds);
 	
 	
 	//errors
@@ -226,18 +232,21 @@ int main() {
 		all_orders.col(2) += (Data_tot[i].col(1)-all_orders.col(1)).pow(2); 
 		zero_order.col(2) += (Data_tot[i].col(2)-zero_order.col(1)).pow(2);
 		first_order.col(2) += (Data_tot[i].col(3)-first_order.col(1)).pow(2); 
-		second_order.col(2) += (Data_tot[i].col(4)-second_order.col(1)).pow(2); 
+		second_ordera.col(2) += (Data_tot[i].col(4)-second_ordera.col(1)).pow(2); 
+		second_orderb.col(2) += (Data_tot[i].col(5)-second_orderb.col(1)).pow(2); 
 	  }
 	  
 	  double norm = 1/static_cast<double>(nseeds*(nseeds-1));
 	  all_orders.col(2) *= norm;
 	  zero_order.col(2) *= norm;
 	  first_order.col(2) *= norm;
-	  second_order.col(2) *= norm;
+	  second_ordera.col(2) *= norm;
+	  second_orderb.col(2) *= norm;
 	  all_orders.col(2) = all_orders.col(2).sqrt();
 	  zero_order.col(2) = zero_order.col(2).sqrt();
 	  first_order.col(2) = first_order.col(2).sqrt();
-	  second_order.col(2) = second_order.col(2).sqrt();
+	  second_ordera.col(2) = second_ordera.col(2).sqrt();
+	  second_orderb.col(2) = second_orderb.col(2).sqrt();
 	  }
 	  
 	std::ofstream all("data/all_orders");  
@@ -252,9 +261,13 @@ int main() {
 	first << first_order << '\n';
 	first.close();
 	
-	std::ofstream second("data/second_order");
-	second << second_order << '\n';
-	second.close();
+	std::ofstream seconda("data/second_ordera");
+	seconda << second_ordera << '\n';
+	seconda.close();
+	
+	std::ofstream secondb("data/second_orderb");
+	secondb << second_orderb << '\n';
+	secondb.close();
 	
 	
 	//statistics
@@ -283,8 +296,8 @@ int main() {
 	
 	int rem=std::system("rm -f ./data/*_core_*");  //removing the data from each core
 	
-	
-	std::cout << "# Analysing data, result = " << system("python3 data_ana.py /project/theorie/h/H.Guertner/BEC_Polaron/ana") << std::endl;
+	const std::string anacommand = "python3 data_ana.py " + config.get<std::string>("Peter_Path");
+	std::cout << "# Analysing data, result = " << system(anacommand.c_str()) << std::endl;
 	return 0;
 }
 

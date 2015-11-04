@@ -35,12 +35,16 @@ int DiagMC::ct(){
    else if (which==1){ // opening arc
 	weight = G0el(diag.pr_p, diag.pr_taufin, diag.pr_tauin); //G0(new)
 	weight /=G0el(diag.pr_q, diag.pr_taufin, diag.pr_tauin); //G0(old)
-	weight /= Dph(diag.pr_taufin, diag.pr_tauin); // Dph(old)  or new depending on t_fin
+	
+	std::array<double, 3> q = diag.get_p(diag.pr_arc-1)-diag.get_p(diag.pr_arc);
+	weight /= Dph(q, diag.pr_taufin, diag.pr_tauin); // Dph(old)  or new depending on t_fin
   }
   else if (which==2){ // closing arc
 	weight = G0el(diag.pr_p, diag.pr_taufin, diag.pr_tauin); //G0(new)
 	weight /=G0el(diag.pr_q, diag.pr_taufin, diag.pr_tauin); //G0(old)
-	weight *= Dph(diag.pr_taufin, diag.pr_tauin); // Dph(new)  or old depending on t_fin
+	
+	std::array<double, 3> q = diag.get_p(diag.pr_arc)-diag.get_p(diag.pr_arc-1);
+	weight *= Dph(q, diag.pr_taufin, diag.pr_tauin); // Dph(new)  or old depending on t_fin
   }
   else {return -1;}
 
@@ -60,14 +64,19 @@ int DiagMC::insert() {
   lu = "insert()";
   updatestat(1,0) +=1;		//attempted
   if (diag.get_order() > maxord-1 && maxord != -1) {return -1;}
-  if(diag.propose_insert(dqins)!=0) {return -1;}
+#ifdef FP
+  const double qctemp = dqins;
+#else
+  const double qctemp = qc;
+#endif
+  if(diag.propose_insert(qctemp)!=0) {return -1;}
   updatestat(1,1) +=1;		//possible
 
   // weight part	
   double weight = G0el(diag.pr_p, diag.pr_tau2.t, diag.pr_tau1.t);	//G0(new)
   weight /= G0el(diag.get_p(diag.pr_arc), diag.pr_tau2.t, diag.pr_tau1.t);	//G0(old)
-  weight *= Dph(diag.pr_tau2.t, diag.pr_tau1.t);	//Phonon(new)
-  weight *= alpha/vsq(diag.pr_q);
+  weight *= Dph(diag.pr_q, diag.pr_tau2.t, diag.pr_tau1.t);	//Phonon(new)
+  weight *= Vq2(diag.pr_q);
   weight /= pow((2.*M_PI), 3);
   
   double weight_diff = weight;
@@ -76,6 +85,8 @@ int DiagMC::insert() {
   
   //order
   double n = static_cast<double>(diag.get_order());
+  if (n == 0) {weight /= fw;}   // for fake function
+
 
   weight *= Prem/Pins;	
   weight /= (1. + (n+1.)*2.); 	//remove selecting vertex 
@@ -86,7 +97,7 @@ int DiagMC::insert() {
 
   //select phonon momentum
   
-  weight *= pow(dqins, 3);
+  weight *= pow(2*qctemp, 3);
   
   //weight /= pow((diag.pr_tau2.t-diag.pr_tau1.t)/2./M_PI, 3./2.) ;
   //weight /= exp((-vsq(diag.pr_q)/2.) *(diag.pr_tau2.t-diag.pr_tau1.t));
@@ -106,14 +117,21 @@ int DiagMC::insert() {
 int DiagMC::remove() {
   lu = "remove()";
   updatestat(2,0) += 1;		//attempted
-  if(diag.propose_remove(dqins)!=0) {return -1;}
+#ifdef FP
+  const double qctemp = dqins;
+#else
+  const double qctemp = qc;
+#endif
+  if(diag.propose_remove(qctemp)!=0) {return -1;}
   updatestat(2,1) +=1;		//possible
 
   // weight part	
+  std::array<double, 3> q = diag.get_p(diag.pr_arc-1)-diag.get_p(diag.pr_arc); 
+  
   double weight = G0el(diag.pr_p, diag.pr_tau2.t, diag.pr_tau1.t);	//G0(new)
   weight /= G0el(diag.get_p(diag.pr_arc), diag.pr_tau2.t, diag.pr_tau1.t);	//G0(old)
-  weight /= Dph(diag.pr_tau2.t, diag.pr_tau1.t);				  //Phonon(old)
-  weight /= alpha/vsq(diag.get_p(diag.pr_arc-1)- diag.get_p(diag.pr_arc));
+  weight /= Dph(q, diag.pr_tau2.t, diag.pr_tau1.t);				  //Phonon(old)
+  weight /= Vq2(q);
   weight *= pow((2.*M_PI), 3);
 
   double weight_diff = weight;
@@ -122,6 +140,7 @@ int DiagMC::remove() {
   
   //order
   double n = static_cast<double>(diag.get_order());
+  if (n == 1) {weight *= fw;}   // for fake function
 
   weight *= Pins/Prem;	
   weight /= (1. + (n-1.)*2.); 	//insert selecting vertex 
@@ -132,7 +151,7 @@ int DiagMC::remove() {
 
   //select phonon momentum
   
-  weight /= pow(dqins, 3);
+  weight /= pow(2*qctemp, 3);
   
   //weight *= pow((diag.pr_tau2.t-diag.pr_tau1.t)/2./M_PI, 3./2.) ;
   //weight*= exp((-vsq(diag.get_q(diag.pr_arc))/2.) *(diag.pr_tau2.t-diag.pr_tau1.t));
@@ -166,6 +185,13 @@ int DiagMC::swap() {
   // both vertices are open or closed
   if (which == 0) {
 	updatestat(4,1) +=1; //possible
+	if (diag.get_link(diag.pr_arc) > diag.pr_arc) { // both opening
+	  weight /= Dph(diag.get_p(diag.pr_arc-1)-diag.get_p(diag.pr_arc),diag.pr_taufin, diag.pr_tauin);
+	  weight *= Dph(diag.get_p(diag.pr_arc)-diag.get_p(diag.pr_arc+1),diag.pr_taufin, diag.pr_tauin);
+	} else { //both closing
+	  weight *= Dph(diag.get_p(diag.pr_arc)-diag.get_p(diag.pr_arc-1),diag.pr_taufin, diag.pr_tauin);
+	  weight /= Dph(diag.get_p(diag.pr_arc+1)-diag.get_p(diag.pr_arc),diag.pr_taufin, diag.pr_tauin);
+	}	  
 	if (drnd() < weight) {
 	  updatestat(4,3) +=1; //accepted
 	  diag.swap();
@@ -180,7 +206,9 @@ int DiagMC::swap() {
   if (which == -2) {
 	updatestat(5,1) +=1; //possible
 	
-	weight /= pow(Dph(diag.pr_taufin, diag.pr_tauin),2.); // 2 phonons are destroyed between tauin and taufin
+	// 2 phonons are destroyed between tauin and taufin
+	weight /= Dph(diag.get_p(diag.pr_arc-1)-diag.get_p(diag.pr_arc),diag.pr_taufin, diag.pr_tauin); // D(q1)
+	weight /= Dph(diag.get_p(diag.pr_arc+1)-diag.get_p(diag.pr_arc),diag.pr_taufin, diag.pr_tauin);	// D(q2)
 	
 	if (drnd() < weight) {
 	  updatestat(5,3) +=1; //accepted
@@ -196,7 +224,9 @@ int DiagMC::swap() {
   if (which == 2) {
 	updatestat(6,1) +=1; //possible
 	
-	weight *= pow(Dph(diag.pr_taufin, diag.pr_tauin),2.);		// 2 phonons are created between tauin and taufin
+	// 2 phonons are created between tauin and taufin
+	weight *= Dph(diag.get_p(diag.pr_arc)-diag.get_p(diag.pr_arc-1), diag.pr_taufin, diag.pr_tauin);
+	weight *= Dph(diag.get_p(diag.pr_arc)-diag.get_p(diag.pr_arc+1), diag.pr_taufin, diag.pr_tauin);
 	
 	if (drnd() < weight) {
 	  updatestat(6,3) +=1; //accepted
@@ -220,7 +250,18 @@ int DiagMC::dq() {
 
   lu = "dq()";
   updatestat(8,0) +=1;		//attempted
-  if(diag.propose_dq(qcor)!=0) {return -1;}
+#ifdef FP
+  const double qcortemp = dqins;
+  const double qctemp = dqins;
+#else
+  const double qcortemp = qcor;
+  const double qctemp = q;
+#endif
+  if(diag.propose_dq(qcortemp)!=0) {return -1;}
+#ifndef FP
+  //Q Cut off
+  if (vsq(diag.get_p(diag.pr_arc-1)-diag.get_p(diag.pr_arc)+diag.pr_q) > qctemp*qctemp){return -2;}
+#endif
   updatestat(8,1) +=1;		//possible
 
   double weight = 1.;
@@ -228,10 +269,13 @@ int DiagMC::dq() {
     weight *= G0el(diag.get_p(diag.pr_arc + i) - diag.pr_q, diag.get_tfin(diag.pr_arc + i), diag.get_tinit(diag.pr_arc + i)); //G0el(neu)
     weight /= G0el(diag.get_p(diag.pr_arc + i), diag.get_tfin(diag.pr_arc + i), diag.get_tinit(diag.pr_arc + i));					//G0el(alt)
   }
-  //alpha term
   std:: array<double,3>  qold = diag.get_p(diag.pr_arc - 1)- diag.get_p(diag.pr_arc); 
-  weight /= vsq(qold + diag.pr_q); //qold + dq
-  weight *= vsq(qold);
+  //Phonon term
+  weight *= Dph(qold + diag.pr_q, diag.pr_taufin, diag.pr_tauin);
+  weight /= Dph(qold, diag.pr_taufin, diag.pr_tauin);  
+  //alpha term
+  weight *= Vq2(qold + diag.pr_q); 
+  weight /= Vq2(qold);
   
   
 
@@ -257,13 +301,14 @@ int DiagMC::insatend(){
   // weight part	
   double weight = G0el(diag.get_p(0), diag.pr_tau2.t, diag.pr_tau1.t);	//G0(new) second last and last vertex
   weight *= G0el(diag.pr_p, diag.pr_tau1.t, diag.pr_tauin);	//G0(new) 
-  weight *= Dph(diag.pr_tau1.t, diag.pr_tauin);	//Phonon(new)
-  weight *= alpha/vsq(diag.pr_q);
+  weight *= Dph(diag.pr_q, diag.pr_tau1.t, diag.pr_tauin);	//Phonon(new)
+  weight *= Vq2(diag.pr_q);
   weight /= pow((2.*M_PI), 3);
   
   double weight_diff = weight;
     
   // a priori part
+  if (diag.get_order() == 0) {weight /= fw;}   // for fake function
   
   weight *= Prae/Piae;	
   weight *= dtins; 					//sample second vertex to insert
@@ -290,15 +335,18 @@ int DiagMC::rematend() {
   updatestat(10,1) +=1;		//possible
 
   // weight part	
+  std::array<double, 3> q = diag.get_p(diag.pr_arc-1)-diag.get_p(diag.pr_arc); 
+  
   double weight = 1.;
   weight /= G0el(diag.get_p(diag.pr_arc), diag.pr_tau1.t, diag.pr_tauin);	//G0(old)
   weight /= G0el(diag.get_p(diag.pr_arc+1), diag.pr_tau2.t, diag.pr_tau1.t);	//G0(old)
-  weight /= Dph(diag.pr_tau1.t, diag.pr_tauin);				  //Phonon(old)
-  weight /= alpha/vsq(diag.get_p(diag.pr_arc-1)- diag.get_p(diag.pr_arc));
+  weight /= Dph(q, diag.pr_tau1.t, diag.pr_tauin);				  //Phonon(old)
+  weight /= Vq2(q);
   weight *= pow((2.*M_PI), 3);
   double weight_diff = weight;
 
   // a priori part
+  if (diag.get_order() == 1) {weight *= fw;}   // for fake function
   
   weight *= Piae/Prae;	
   weight /= dtins; 					//sample second vertex to insert
@@ -326,29 +374,34 @@ int DiagMC::measure() {
   if (diag.get_order() > 1) {
 	if (diag.is_reducible()) {return 0;}
   }
-  if (diag.get_order() > 1) {
-	//all
+  //all G0SE
+  if (diag.get_order() > 1 ){
 	Data((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin)), 0) +=1;
-	if (diag.get_order() == 2) {
-	  //second order
-	  Data((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin)), 3) += 1;
-	}
-  } else {
-	//first order
-	if (diag.get_order() == 1) {
-	  Data((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin)), 2) += 1;
-	}
-	//zero order
-	if (diag.get_order() == 0) {
-	  Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 1) += 1;
-	}
   }
- 
+  //zero order (fake check)
+  if (diag.get_order() == 0) {
+	Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 1) += 1;
+  }
+  //first order G0SeG0
+  if (diag.get_order() == 1) {
+	Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 2) += 1;
+  }
+  //second order G0SE
+  if (diag.get_order() == 2)  {
+	if (vsq(diag.get_p(1)-diag.get_p(3)) < 0.00000000000001){
+	  Data((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin)), 3) += 1;
+	} else {
+	  Data((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin)), 4) += 1;
+	}
+  } 
 #else
   Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 0) +=1;
-  if (diag.get_order() < 3) {Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), diag.get_order()+1) += 1;}
-  if (diag.get_order() ==2 && vsq(diag.get_q(2)) < 0.00000000000001) {	
-	Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), diag.get_order()+1) += 1;
+  if (diag.get_order() < 2) {Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), diag.get_order()+1) += 1;}
+  if (diag.get_order() ==2){
+	if(vsq(diag.get_q(2)) < 0.00000000000001) {
+	  Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 3) += 1;
+	}
+	Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 4) += 1;
   }
 #endif
   if (diag.get_order() < orderstat.size()){

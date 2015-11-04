@@ -105,7 +105,7 @@ void DiagMC::timestats(const VectorXd & timestat) {
 */
   
 ArrayXXd DiagMC::get_Data() {
-  ArrayXXd  output(taubin, 5);
+  ArrayXXd  output(taubin, 6);
 	
   int CG0p = 0;
   for (int i=0; i< taubin; i++) {
@@ -115,11 +115,12 @@ ArrayXXd DiagMC::get_Data() {
  
 
 #ifdef SELFENERGY
-  output.rightCols(4)=Data.cast<double>()/static_cast<double>(CG0p)*static_cast<double>(taubin)/taumax;
-  //zero order
-  output.col(2)*= G0p;
+  output.rightCols(5)=Data.cast<double>()/static_cast<double>(CG0p)*fw*static_cast<double>(taubin)/taumax;
+  //zero order (fake check)
+  output.col(2)*= G0p/fw;
+  output.col(3)*= G0p; //first order  G0SEG0
 #else
-  output.rightCols(4)=Data.cast<double>()*(G0p/static_cast<double>(CG0p))*static_cast<double>(taubin)/taumax;
+  output.rightCols(5)=Data.cast<double>()*(G0p/static_cast<double>(CG0p))*static_cast<double>(taubin)/taumax;
 #endif	
   return output;	
 }

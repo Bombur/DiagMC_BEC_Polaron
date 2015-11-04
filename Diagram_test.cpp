@@ -42,6 +42,14 @@ class momerr: public std::exception
   }
 };
 
+class qerr: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "Q is not conserved!";
+  }
+};
+
 class propopen: public std::exception
 {
   virtual const char* what() const throw()
@@ -85,10 +93,10 @@ void Diagram::test() {
 	  if (times[i].t > times[i+1].t) {throw timeserr();}
 	  for (int i2 = 0; i2< 3; i2++) {
 		if (fabs((get_p(i).at(i2)+get_q(i).at(i2)) - get_p(0).at(i2)) > 0.0000001)  {throw momerr();}
-
 	  }
-
-
+	  if(times[i].link > i && i>0){
+		if (vsq(elprop[i-1]-elprop[i]-elprop[times[i].link]+elprop[times[i].link-1]) > 0.0000001){throw qerr();}
+	  }
 	}
 	
 	for (int i=0; i<(2*order)+2; i++) {
@@ -144,4 +152,17 @@ bool Diagram::is_reducible() {
 	if (vsq(elprop[i]-p0) < 1e-8) {return true;}
   }
   return false;  
+}
+
+int Diagram::arch_num(const int & ver = 0) {
+  int lim;
+  int num = 0;
+  if (ver == 0) {lim = pr_arc;}
+  else {lim = ver;} 
+  
+  if (times[lim].link < lim) {return arch_num(times[lim].link);}
+  for (int i = 2; i<  lim+1; i++){
+	if (times[i].link > i) { num +=1;}
+  }
+  return num;
 }

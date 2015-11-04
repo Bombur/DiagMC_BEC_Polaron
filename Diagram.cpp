@@ -14,11 +14,16 @@ Diagram::Diagram() {
   
   std::array<double, 3> zero;
   zero.fill(0.);
+#ifndef NCHECK
+  phprop.reserve(1000);
+  phprop.assign(1, zero);
+ // qs.reserve(500);
+#endif 
+  
   elprop.reserve(1000);
   elprop.assign(1, zero);
   
-  phprop.reserve(1000);
-  phprop.assign(1, zero);
+
   
   pr_arc = 0;
   pr_tauin = 0.;
@@ -37,7 +42,7 @@ void Diagram::set(const double & p, const double & tau, const std::function<doub
   
   times[0].link = 1;
   times[1].t = tau;
-    
+
   elprop[0][0] = p;
 }
 
@@ -49,6 +54,7 @@ void Diagram::random_arc() {
 int Diagram::propose_insert(const double & dqins) {
 	random_arc();										//arc to insert
 	//if (order >1) {return -2;}						//step 2 just 1st order allowed
+	if (order > 0 && (pr_arc == 0 || pr_arc == 2*order)) {return -1;} 
 	
 	pr_tauin = times[pr_arc].t;	  // get_tauinit
 	pr_taufin = times[pr_arc+1].t; // get_taufin
@@ -64,11 +70,11 @@ int Diagram::propose_insert(const double & dqins) {
 	pr_q[2] = sqrt(-2.*log(drnd()))*cos(2.*M_PI*drnd())/sqrt(pr_tau2.t-pr_tau1.t);		//qz
 	*/
 	
-	pr_q[0] = (drnd()-0.5)*dqins;		//qx
-	pr_q[1] = (drnd()-0.5)*dqins;		//qy
-	pr_q[2] = (drnd()-0.5)*dqins;		//qz
+	pr_q[0] = (drnd()-0.5)*2*dqins;		//qx
+	pr_q[1] = (drnd()-0.5)*2*dqins;		//qy
+	pr_q[2] = (drnd()-0.5)*2*dqins;		//qz
   
-	if (vsq(pr_q) > dqins*dqins*0.25) {return -1;}
+	if (vsq(pr_q) > dqins*dqins) {return -1;}
 	
 	pr_p = elprop[pr_arc] - pr_q;
 	 
@@ -90,7 +96,7 @@ int Diagram::propose_remove(const double & dqins) {
 	
 	pr_q.fill(0);		
 	
-	if (vsq(elprop[pr_arc-1] - elprop[pr_arc]) > dqins*dqins*0.25 ){return -1;} 	//only remove in circle with diameter qins
+	if (vsq(elprop[pr_arc-1] - elprop[pr_arc]) > dqins*dqins){return -1;} 	//only remove in circle with diameter qins
 	
 	pr_p = elprop[pr_arc-1];
 	return 0;
@@ -99,20 +105,24 @@ int Diagram::propose_remove(const double & dqins) {
 int Diagram::propose_swap() {
   random_arc();
   if (order == 0) {return -1;}
-  if (pr_arc == 0 || times[pr_arc+1].link == 0) {return -1;}
-  if (times[pr_arc].link == (pr_arc+1)) {return -1;}
+  if (pr_arc == 0 || times[pr_arc+1].link == 0) {return -1;} // first and second last
+  
+  if (times[pr_arc].link == (pr_arc+1)) {return -1;} //small loop
   
   pr_tauin = times[pr_arc].t;   // get_tinit(pr_arc);
   pr_taufin = times[pr_arc+1].t ;  // get_tfin(pr_arc);
   
   
-  pr_p = elprop[pr_arc -1] + elprop[pr_arc+1] - elprop[pr_arc];  //vsub(vadd(elprop[pr_arc -1], elprop[pr_arc+1]), elprop[pr_arc]); //pnew
+  pr_p = elprop[pr_arc -1] + elprop[pr_arc+1] - elprop[pr_arc];  
   
-  pr_q= elprop[0] - pr_p ; //vsub( vadd(get_q(pr_arc-1), get_q(pr_arc+1)), get_q(pr_arc));	
+  pr_q= elprop[0] - pr_p ; 
   
   
   //first opening second closing 
   if (((times[pr_arc].link) > pr_arc) && ((times[pr_arc+1].link) < (pr_arc + 1)) ) {
+#ifdef SELFENERGY
+	if (vsq(pr_p - elprop[0]) < 0.00000000001) {return -1;}
+#endif
 	return -2;
   }
   //first closing second opening
@@ -179,7 +189,7 @@ int Diagram::propose_dq(const double & qcor) {
 	pr_q[2] = (drnd()-0.5)* qcor;		//qz
 	
 	pr_p.fill(0.);
-	 
+	
 	return 0;
 }
 
@@ -209,7 +219,7 @@ int Diagram::propose_insatend(const double & taumax, const double & dtins, const
 
 int Diagram::propose_rematend(const double & dtins, const double & dqins) {
 	if (order ==0) {return -1;}
-	pr_arc= times[0].link-2;				//choose second last vertex
+	pr_arc= times[0].link-2;				//choose third last vertex
 	
 	if (times[pr_arc].link != (pr_arc +1)) {return -1;}
 	  
@@ -234,7 +244,6 @@ int Diagram::propose_rematend(const double & dtins, const double & dqins) {
 
 void Diagram::insert() {
   	std::vector< vertex>::iterator tit = times.begin() + pr_arc;		//iterators for different matrices
-	std::vector< std::array<double,3> >::iterator pit = phprop.begin() + pr_arc;
 	std::vector< std::array<double,3> >::iterator eit = elprop.begin() + pr_arc;
 	
 	for (int i = 0; i<((2*order)+1); i++) {
@@ -243,13 +252,23 @@ void Diagram::insert() {
 	
 	times.insert(tit+1, pr_tau1);										//insert tau1 and tau2
 	times.insert(tit+2, pr_tau2);
-	
-	
-	phprop.insert(pit+1, std::move(pr_q + phprop[pr_arc]));							//insert q+oldq in arc+1
-	phprop.insert(pit+2, std::move(phprop[pr_arc]));								//insert oldq in arc+2
-	
+		
 	elprop.insert(eit+1, std::move(elprop[pr_arc]- pr_q));					//insert oldp-q in arc+1
 	elprop.insert(eit+2, std::move(elprop[pr_arc]));								//insert oldp in arc+2	  
+	
+#ifndef NCHECK
+	std::vector< std::array<double,3> >::iterator pit = phprop.begin() + pr_arc;
+	phprop.insert(pit+1, std::move(pr_q + phprop[pr_arc]));							//insert q+oldq in arc+1
+	phprop.insert(pit+2, std::move(phprop[pr_arc]));								//insert oldq in arc+2
+/*
+	std::vector< arch >::iterator qsit = qs.begin() + arch_num();
+	arch tmp;
+	tmp.mom = pr_q;
+	tmp.beg = pr_arc + 1;
+	tmp.link = pr_arc + 2;
+	phprop.insert(qsit+1, std::move(tmp));
+	*/
+#endif
 	
 	order+=1;
 
@@ -257,14 +276,19 @@ void Diagram::insert() {
 
 void Diagram::remove() {
 	std::vector< vertex >::iterator tit = times.begin() + pr_arc;		//iterators for different matrices
-    std::vector< std::array<double,3> >::iterator pit = phprop.begin() + pr_arc;
 	std::vector< std::array<double,3> >::iterator eit = elprop.begin() + pr_arc;
 	  
 	times.erase(tit, tit+2);	  
+	elprop.erase(eit, eit+2); 
 	
+#ifndef NCHECK
+	std::vector< std::array<double,3> >::iterator pit = phprop.begin() + pr_arc;
 	phprop.erase(pit, pit+2);
-      
-	elprop.erase(eit, eit+2);  
+/*
+	std::vector< arch >::iterator qsit = qs.begin() + arch_num();
+	qs.erase(qsit);
+	*/
+#endif
   
 	order-=1;
 	  
@@ -291,9 +315,10 @@ void Diagram::swap() {
   times[pr_arc].link = times[pr_arc+1].link;
   times[pr_arc+1].link = tmp;
     
-  phprop[pr_arc] = pr_q;
-  
   elprop[pr_arc] = pr_p;
+#ifndef NCHECK
+  phprop[pr_arc] = pr_q;
+#endif 
 }
 
 
@@ -303,9 +328,11 @@ void Diagram::ct() {
 
 void Diagram::dq() {
   for (int i=0 ; i < (times[pr_arc].link - pr_arc); i++) {
+#ifndef NCHECK
     phprop[pr_arc + i][0] += pr_q[0];
     phprop[pr_arc + i][1] += pr_q[1];
     phprop[pr_arc + i][2] += pr_q[2];
+#endif
     
     elprop[pr_arc + i][0] -= pr_q[0];
     elprop[pr_arc + i][1] -= pr_q[1];
@@ -321,13 +348,20 @@ void Diagram::insatend() {
 	times[0].link += 2;				//link to last tau
 	times[pr_arc].link += pr_arc + 1;			// opening arc
 	
-	
+#ifndef NCHECK
 	phprop.push_back(pr_q);							
 	phprop.push_back(phprop[0]);
+	/*
+	arch tmp;
+	tmp.mom = pr_q;
+	tmp.beg = pr_arc;
+	tmp.link = pr_arc + 1;
+	qs.push_back(tmp);
+	*/
+#endif
 	
 	elprop.push_back(pr_p);
 	elprop.push_back(elprop[0]);  
- 
 	
 	order+=1;
 }
@@ -340,12 +374,22 @@ void Diagram::rematend() {
 	times[0].link -= 2;				//link to last tau
 	times[pr_arc].link = 0;			// last tau
 	
-	phprop.pop_back();							
-	phprop.pop_back();
-	
 	elprop.pop_back();
 	elprop.pop_back();  
- 
+	
+#ifndef NCHECK
+	phprop.pop_back();							
+	phprop.pop_back();
+	/*
+	arch tmp;
+	tmp.mom = *(eit-1) - *(eit);
+	tmp.beg = pr_arc;
+	tmp.link = pr_arc +1;
+	std::vector<arch>::iterator qit = std::find(qs.begin(), qs.end() + 1, tmp);
+	assert(qit != qs.end()+1);
+	qs.erase(qit);
+	*/
+#endif
 	
 	order-=1;
 }

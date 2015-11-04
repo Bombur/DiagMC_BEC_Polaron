@@ -1,4 +1,4 @@
-DEFS = -DSELFENERGY
+DEFS = -DFP
 
 SHELL = /bin/sh
 
@@ -26,10 +26,10 @@ WARNINGS = -Wall -Wextra -Wpointer-arith  -Wcast-qual -Wcast-align \
  
 #CFLAGS= -O0 -funroll-all-loops -ffast-math -fopenmp $(WARNINGS)
 #CFLAGS = $(WARNINGS)
-CFLAGS= -O3 -funroll-all-loops -ffast-math -fopenmp -pg
+CFLAGS= -O3 -funroll-all-loops -ffast-math -fopenmp
 #CFLAGS = -pg
 
-LDFLAGS= -fopenmp -pg
+LDFLAGS= -fopenmp
 #LDFLAGS= -pg
 
 #Include Path
