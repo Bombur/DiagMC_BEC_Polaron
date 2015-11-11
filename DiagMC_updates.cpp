@@ -66,10 +66,10 @@ int DiagMC::insert() {
   if (diag.get_order() > maxord-1 && maxord != -1) {return -1;}
 #ifdef FP
   const double qctemp = dqins;
-#else
+#elif BEC
   const double qctemp = qc;
 #endif
-  if(diag.propose_insert(qctemp)!=0) {return -1;}
+  if(diag.propose_insert(qctemp, sigfac)!=0) {return -1;}
   updatestat(1,1) +=1;		//possible
 
   // weight part	
@@ -85,7 +85,7 @@ int DiagMC::insert() {
   
   //order
   double n = static_cast<double>(diag.get_order());
-  if (n == 0) {weight /= fw;}   // for fake function
+  if (diag.get_order() == 0) {weight /= fw;}   // for fake function
 
 
   weight *= Prem/Pins;	
@@ -96,8 +96,15 @@ int DiagMC::insert() {
   weight *= diag.pr_taufin-diag.pr_tau1.t; //select second vertex to insert
 
   //select phonon momentum
-  
+#ifdef QGAUSS
+  //Gauss
+  weight *= pow(M_PI* 2.*qctemp/sigfac *qctemp/sigfac, 3./2.);
+  weight /= exp(-vsq(diag.pr_q)/2./(qctemp/sigfac)/(qctemp/sigfac));
+#else  
+  //linear
   weight *= pow(2*qctemp, 3);
+#endif
+  
   
   //weight /= pow((diag.pr_tau2.t-diag.pr_tau1.t)/2./M_PI, 3./2.) ;
   //weight /= exp((-vsq(diag.pr_q)/2.) *(diag.pr_tau2.t-diag.pr_tau1.t));
@@ -117,11 +124,17 @@ int DiagMC::insert() {
 int DiagMC::remove() {
   lu = "remove()";
   updatestat(2,0) += 1;		//attempted
+
+#ifdef SECUMUL
+  if (diag.get_order() < minord + 1) {return -1;} 
+#endif
+
 #ifdef FP
   const double qctemp = dqins;
-#else
+#elif BEC
   const double qctemp = qc;
 #endif
+
   if(diag.propose_remove(qctemp)!=0) {return -1;}
   updatestat(2,1) +=1;		//possible
 
@@ -140,7 +153,7 @@ int DiagMC::remove() {
   
   //order
   double n = static_cast<double>(diag.get_order());
-  if (n == 1) {weight *= fw;}   // for fake function
+  if (diag.get_order() == 1) {weight *= fw;}   // for fake function
 
   weight *= Pins/Prem;	
   weight /= (1. + (n-1.)*2.); 	//insert selecting vertex 
@@ -150,9 +163,14 @@ int DiagMC::remove() {
   weight /= diag.pr_taufin-diag.pr_tau1.t; //select second vertex to insert
 
   //select phonon momentum
-  
+#ifdef QGAUSS
+  //Gauss
+  weight /= pow(M_PI* 2.*qctemp/sigfac*qctemp/sigfac, 3./2.);
+  weight *= exp(-vsq(q)/2./(qctemp/sigfac)/(qctemp/sigfac));
+#else
+  //linear
   weight /= pow(2*qctemp, 3);
-  
+#endif
   //weight *= pow((diag.pr_tau2.t-diag.pr_tau1.t)/2./M_PI, 3./2.) ;
   //weight*= exp((-vsq(diag.get_q(diag.pr_arc))/2.) *(diag.pr_tau2.t-diag.pr_tau1.t));
 				  
@@ -253,12 +271,12 @@ int DiagMC::dq() {
 #ifdef FP
   const double qcortemp = dqins;
   const double qctemp = dqins;
-#else
+#elif BEC
   const double qcortemp = qcor;
-  const double qctemp = q;
+  const double qctemp = qc;
 #endif
   if(diag.propose_dq(qcortemp)!=0) {return -1;}
-#ifndef FP
+#ifdef BEC
   //Q Cut off
   if (vsq(diag.get_p(diag.pr_arc-1)-diag.get_p(diag.pr_arc)+diag.pr_q) > qctemp*qctemp){return -2;}
 #endif
@@ -364,48 +382,4 @@ int DiagMC::rematend() {
   }
     
   return 0;
-}
-
-	
-
-
-int DiagMC::measure() {
-#ifdef SELFENERGY
-  if (diag.get_order() > 1) {
-	if (diag.is_reducible()) {return 0;}
-  }
-  //all G0SE
-  if (diag.get_order() > 1 ){
-	Data((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin)), 0) +=1;
-  }
-  //zero order (fake check)
-  if (diag.get_order() == 0) {
-	Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 1) += 1;
-  }
-  //first order G0SeG0
-  if (diag.get_order() == 1) {
-	Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 2) += 1;
-  }
-  //second order G0SE
-  if (diag.get_order() == 2)  {
-	if (vsq(diag.get_p(1)-diag.get_p(3)) < 0.00000000000001){
-	  Data((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin)), 3) += 1;
-	} else {
-	  Data((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin)), 4) += 1;
-	}
-  } 
-#else
-  Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 0) +=1;
-  if (diag.get_order() < 2) {Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), diag.get_order()+1) += 1;}
-  if (diag.get_order() ==2){
-	if(vsq(diag.get_q(2)) < 0.00000000000001) {
-	  Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 3) += 1;
-	}
-	Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 4) += 1;
-  }
-#endif
-  if (diag.get_order() < orderstat.size()){
-	orderstat(diag.get_order()) +=1;
-  }
-  return 1;
 }

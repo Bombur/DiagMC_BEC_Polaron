@@ -2,26 +2,13 @@
 
 namespace pt = boost::property_tree;
 
-class oor_Probs: public std::exception {
-  virtual const char* what() const throw()
-  {
-    return "The Probabilities do not add up to 1!";
-  }
-};  
-
-class openwritefile: public std::exception {
-  virtual const char* what() const throw()
-  {
-    return "Write File not open!";
-  }
-};
-
-DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>("Momentum")), qc(config.get<double>("Q_Cutoff")), mu(config.get<double>("Chemical_Potential")), taumax(config.get<double>("Tau_max")), taubin(config.get<int>("Tau_bin")), alpha(config.get<double>("Alpha")), relm(config.get<double>("Impurity_Mass")), maxord(config.get<double>("Max_Order")),  
-										ctcor(config.get<double>("Correction_tau")),  qcor(config.get<double>("Correction_dq")),  dtins(config.get<double>("Insert_FP_DT")), dqins(config.get<double>("Insert_FP_DQ")), fw(config.get<double>("Fake_Weight")),
+DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>("Momentum")), qc(config.get<double>("Q_Cutoff")), mu(config.get<double>("Chemical_Potential")), taumax(config.get<double>("Tau_max")), taubin(config.get<int>("Tau_bin")), alpha(config.get<double>("Alpha")), relm(config.get<double>("Impurity_Mass")), maxord(config.get<int>("Max_Order")),  
+										ctcor(config.get<double>("Correction_tau")),  qcor(config.get<double>("Correction_dq")),  dtins(config.get<double>("Insert_FP_DT")), dqins(config.get<double>("Insert_FP_DQ")), fw(config.get<double>("Fake_Weight")), sigfac(config.get<double>("QSigma_Factor")),
 										Prem(config.get<double>("Remove_Probability")), Pins(config.get<double>("Insert_Probability")), Pct(config.get<double>("Change_tau_Probability")), Pctho(config.get<double>("Change_tau_in_HO_Probability")), Psw(config.get<double>("Swap_Probability")), Pdq(config.get<double>("DQ_Probability")), Piae(config.get<double>("IAE_Probability")), Prae(config.get<double>("RAE_Probability")),
-										Meas_its(config.get<int>("Its_per_Measure")), Test_its(config.get<int>("Its_per_Test")), Write_its(config.get<int>("Its_per_Write")), RunTime(config.get<int>("RunTime")) { 
+										Meas_its(config.get<int>("Its_per_Measure")), Test_its(config.get<int>("Its_per_Test")), Write_its(config.get<int>("Its_per_Write")), RunTime(config.get<int>("RunTime")),
+										ordstsz(config.get<int>("Order_Step_Size")), normmin(config.get<int>("Norm_Points")), TotRunTime(config.get<int>("Total_Time")) { 
   try{
-	if (fabs(1-Prem-Pins-Pct -Pctho -Piae -Prae - Pdq-Psw) > 0.0000001) {throw oor_Probs();}
+	if (fabs(1-Prem-Pins-Pct -Pctho -Piae -Prae - Pdq-Psw) > 0.0000000001) {throw oor_Probs();}
 	
 	E = pow(p,2.)/2. - mu;
 	G0p = (1.-exp(-E*taumax))/E;
@@ -38,6 +25,19 @@ DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>(
 	Data = ArrayXXi::Zero(taubin, 5);
 	
 	diag.set(p, config.get<double>("Tau_start"), drnd);
+	
+	
+	//Cumulative SE Calculation
+	minord = 0;
+	ordstep = 0;
+#ifdef SECUMUL
+	maxord = minord + ordstsz; 
+	SEib= ArrayXi::Zero(taubin);
+	Norms = ArrayXi::Zero(taubin);
+	Ends = ArrayXi::Zero(taubin);
+	nnorms.assign(1, 0);
+	nends.assign(1, 0);
+#endif
   
 	updatestat = ArrayXXd::Zero(11,6);
 	orderstat = ArrayXi::Zero(40);

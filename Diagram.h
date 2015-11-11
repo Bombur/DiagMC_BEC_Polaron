@@ -12,9 +12,8 @@
 #include <functional>
 
 //exceptions
-#include <exception>
-#include <stdexcept>
 #include <assert.h>
+#include "DiagramException.h"
 
 //math and container
 #include "/project/theorie/h/H.Guertner/lib/Eigen/Eigen/Dense"
@@ -63,11 +62,11 @@ class Diagram {
 	vertex pr_tau2;
 	std::array<double,3> pr_q;
 	std::array<double,3> pr_p;
-	
+	 
 
 	//proposing
 	void random_arc();
-	int propose_insert(const double & dqins);
+	int propose_insert(const double & dqins, const double & sigfac);
 	int propose_remove(const double & dqins);
 	int propose_swap();
 	int propose_ct(const double & taumax, const double & ctcor);
@@ -87,7 +86,7 @@ class Diagram {
 	void rematend();
 	
 	//tests
-	void test();
+	void test(const double & qc);
 	void printall(); 
 	bool is_reducible();
 	int arch_num(const int &);

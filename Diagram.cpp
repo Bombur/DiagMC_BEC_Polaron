@@ -51,11 +51,13 @@ void Diagram::random_arc() {
 }
 
 
-int Diagram::propose_insert(const double & dqins) {
+int Diagram::propose_insert(const double & dqins, const double & sigfac) {
 	random_arc();										//arc to insert
 	//if (order >1) {return -2;}						//step 2 just 1st order allowed
-	if (order > 0 && (pr_arc == 0 || pr_arc == 2*order)) {return -1;} 
 	
+#ifdef SELFENERGY
+	if (order > 0 && (pr_arc == 0 || pr_arc == 2*order)) {return -1;} 
+#endif	
 	pr_tauin = times[pr_arc].t;	  // get_tauinit
 	pr_taufin = times[pr_arc+1].t; // get_taufin
 	
@@ -69,11 +71,20 @@ int Diagram::propose_insert(const double & dqins) {
 	pr_q[1] = sqrt(-2.*log(drnd()))*sin(2.*M_PI*drnd())/sqrt(pr_tau2.t-pr_tau1.t);		//qy
 	pr_q[2] = sqrt(-2.*log(drnd()))*cos(2.*M_PI*drnd())/sqrt(pr_tau2.t-pr_tau1.t);		//qz
 	*/
-	
+#ifdef QGAUSS
+	//Gauss q	
+	const double qr= (dqins/sigfac)*sqrt(-2.* log(drnd()));
+	const double qtheta = drnd() *M_PI;
+	const double qphi = drnd() *2. *M_PI;
+	pr_q[0] = qr * cos(qtheta)*cos(qphi);	//qx
+	pr_q[1] = qr * cos(qtheta)*sin(qphi);		//qy
+	pr_q[2] = qr * sin(qtheta);		//qz
+#else
+	// linear chosen q
 	pr_q[0] = (drnd()-0.5)*2*dqins;		//qx
 	pr_q[1] = (drnd()-0.5)*2*dqins;		//qy
 	pr_q[2] = (drnd()-0.5)*2*dqins;		//qz
-  
+#endif  
 	if (vsq(pr_q) > dqins*dqins) {return -1;}
 	
 	pr_p = elprop[pr_arc] - pr_q;
@@ -121,7 +132,7 @@ int Diagram::propose_swap() {
   //first opening second closing 
   if (((times[pr_arc].link) > pr_arc) && ((times[pr_arc+1].link) < (pr_arc + 1)) ) {
 #ifdef SELFENERGY
-	if (vsq(pr_p - elprop[0]) < 0.00000000001) {return -1;}
+	if (vsq(pr_p - elprop[0]) < 0.00000000001) {return -1;} // check to not open SE Diagram
 #endif
 	return -2;
   }
@@ -260,14 +271,6 @@ void Diagram::insert() {
 	std::vector< std::array<double,3> >::iterator pit = phprop.begin() + pr_arc;
 	phprop.insert(pit+1, std::move(pr_q + phprop[pr_arc]));							//insert q+oldq in arc+1
 	phprop.insert(pit+2, std::move(phprop[pr_arc]));								//insert oldq in arc+2
-/*
-	std::vector< arch >::iterator qsit = qs.begin() + arch_num();
-	arch tmp;
-	tmp.mom = pr_q;
-	tmp.beg = pr_arc + 1;
-	tmp.link = pr_arc + 2;
-	phprop.insert(qsit+1, std::move(tmp));
-	*/
 #endif
 	
 	order+=1;
@@ -351,13 +354,6 @@ void Diagram::insatend() {
 #ifndef NCHECK
 	phprop.push_back(pr_q);							
 	phprop.push_back(phprop[0]);
-	/*
-	arch tmp;
-	tmp.mom = pr_q;
-	tmp.beg = pr_arc;
-	tmp.link = pr_arc + 1;
-	qs.push_back(tmp);
-	*/
 #endif
 	
 	elprop.push_back(pr_p);
@@ -380,15 +376,6 @@ void Diagram::rematend() {
 #ifndef NCHECK
 	phprop.pop_back();							
 	phprop.pop_back();
-	/*
-	arch tmp;
-	tmp.mom = *(eit-1) - *(eit);
-	tmp.beg = pr_arc;
-	tmp.link = pr_arc +1;
-	std::vector<arch>::iterator qit = std::find(qs.begin(), qs.end() + 1, tmp);
-	assert(qit != qs.end()+1);
-	qs.erase(qit);
-	*/
 #endif
 	
 	order-=1;

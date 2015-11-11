@@ -13,7 +13,9 @@ double DiagMC::Vq2(const std::array< double, 3> & q) {
   double pref =  alpha*2.*sqrt(2.)*M_PI;
   return pref/vsq(q);  
 }
-#else
+#endif
+
+#ifdef BEC
 double DiagMC::Dph(const std::array< double, 3> & q, const double & tfin, const double & tinit) {
   double omega = sqrt(vsq(q)/2 * (1+(vsq(q)/2)));
   return exp((-omega)*(tfin-tinit));

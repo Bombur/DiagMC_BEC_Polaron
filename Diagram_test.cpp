@@ -1,74 +1,6 @@
 #include "Diagram.h"
 
-//Errors for Testing
-
-class dnf_diagvec: public std::exception
-{
-  virtual const char* what() const throw()
-  {
-    return "Diagram vector sizes do not fit!";
-  }
-};
-
-class timeserr: public std::exception
-{
-  virtual const char* what() const throw()
-  {
-    return "Error in Diagram::times!";
-  }
-};
-
-class phproperr: public std::exception
-{
-  virtual const char* what() const throw()
-  {
-    return "Error in Diagram::phprop!";
-  }
-};
-
-class elproperr: public std::exception
-{
-  virtual const char* what() const throw()
-  {
-    return "Error in Diagram::elprop!";
-  }
-};
-
-class momerr: public std::exception
-{
-  virtual const char* what() const throw()
-  {
-    return "Momentum is not conserved!";
-  }
-};
-
-class qerr: public std::exception
-{
-  virtual const char* what() const throw()
-  {
-    return "Q is not conserved!";
-  }
-};
-
-class propopen: public std::exception
-{
-  virtual const char* what() const throw()
-  {
-    return "A propergator is not closed";
-  }
-};
-
-
-class swpos: public std::exception
-{
-  virtual const char* what() const throw()
-  {
-    return "Number of possible vertices for swap do not fit number of zero loops!";
-  }
-};
-
-
-void Diagram::test() {
+void Diagram::test(const double & qc) {
   try {
 	//printall();
 	if (times.size() != (2*order)+2) {throw dnf_diagvec();}
@@ -98,6 +30,13 @@ void Diagram::test() {
 		if (vsq(elprop[i-1]-elprop[i]-elprop[times[i].link]+elprop[times[i].link-1]) > 0.0000001){throw qerr();}
 	  }
 	}
+	
+#ifdef BEC	
+	//Cut Off Check
+	for (auto i = 1; i< (elprop.size()-1); i++) {
+	  if (times[i].link > i && vsq(elprop[i-1]- elprop[i]) > qc*qc){throw qoor();}
+	}
+#endif	
 	
 	for (int i=0; i<(2*order)+2; i++) {
 	  if (tmp(i) != 1) {throw propopen();}

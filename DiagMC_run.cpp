@@ -6,6 +6,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include "DiagMC.h"
+#include "RunException.h"
 
 #if defined(_OPENMP)
 #include <omp.h>
@@ -26,6 +27,9 @@ int main() {
 	  
 	std::cout << "# Using " << nseeds << " cores." << std::endl;
 	
+	pt::ptree config;
+	pt::read_json("DiagMC_BEC.json", config);
+	
 	//Total Statistics and Data
 	std::vector<ArrayXXd> Data_tot(nseeds);
 	  	
@@ -33,16 +37,32 @@ int main() {
 	ArrayXi os_tot = ArrayXi::Zero(40);
 	ArrayXd ts_tot = ArrayXd::Zero(8);
 	
+	//Statistics and Data for SECUMUL
+#ifdef SECUMUL
+	ArrayXXd SEib = ArrayXXd::Zero(config.get<int>("Tau_bin"),nseeds);
+	std::vector<ArrayXXd> Norms;
+	std::vector<ArrayXXd> Ends;
+	std::vector<int> nnorms;
+	std::vector<int> nends;
+	std::vector<std::vector<int>> minmax;
+	
+	//temporary
+	ArrayXXd SEibtemp(config.get<int>("Tau_bin"),nseeds);
+	ArrayXXd Normstemp(config.get<int>("Tau_bin"),nseeds);
+	ArrayXXd Endstemp(config.get<int>("Tau_bin"),nseeds);
+	int nnormstemp;
+	int nendstemp;
+		
+	double ordstsz_calc=0.;
+#endif
+	
 	//constants and parameters
 	double onecore_time= 0;
-	
-	pt::ptree config;
-	pt::read_json("DiagMC_BEC.json", config);
-	
+		
 	#pragma omp parallel num_threads(nseeds) 
 	{
 
-	  #pragma omp for
+	  #pragma omp for ordered schedule(static, 1)
 	  for (int seed = 0; seed < nseeds; seed++)
 	  {
 		// initialization
@@ -53,6 +73,20 @@ int main() {
 		  std::cout << "# Initialize thread " << seed << std::endl;
 		}
 		
+#ifdef SECUMUL
+		//Total time Control
+		steady_clock::time_point Cumt_be = steady_clock::now();  //start time
+		steady_clock::time_point Cumdt_be = steady_clock::now();
+  		double Cumt =0.;
+		double Cumdt= 0.;
+		
+		//order steps iterator
+		int ordit =0;
+		
+		do{
+		bool maxordcheck = true;
+		bool normcheck = true;
+#endif
 		//time control
 		steady_clock::time_point time_begin = steady_clock::now();  //start time
 		ArrayXd timestat = ArrayXd::Zero(8);
@@ -115,7 +149,8 @@ int main() {
 			timestat(1) += static_cast<double>((t_ctho_end-t_ctho_be).count())* steady_clock::period::num / steady_clock::period::den ;
 				 
 		  }
-				
+
+#ifdef FP
 		  else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq - fp.Psw - fp.Pctho) < fp.Piae) {
 				  
 			steady_clock::time_point t_iae_be= steady_clock::now();
@@ -132,23 +167,35 @@ int main() {
 			steady_clock::time_point t_rae_end = steady_clock::now();
 			timestat(7) += static_cast<double>((t_rae_end-t_rae_be).count())* steady_clock::period::num / steady_clock::period::den ;
 		  }
+#endif
 		  else { 
 			assert(0);
 		  }
 			
 		  if ((it%fp.Meas_its) ==0) {
-			meas += fp.measure();
+#ifdef SECUMUL
+			meas += fp.measure(ordit);
+#else
+			meas += fp.measure(0);
+#endif
 		  }
 			
 		  if ( (it%fp.Test_its) ==0) {
-			fp.test();
+			try{
+			  fp.test();
 #ifdef SELFENERGY
-			std::cout << "# Measurement check " << meas << '\t' << it/fp.Meas_its << std::endl;
+			  if (meas < fp.Meas_its) {throw meascheck();}
 #endif
+#ifdef SECUMUL
+#endif
+			} catch (std::exception& e){
+			  std::cerr << e.what() << std::endl;
+			  exit(EXIT_FAILURE);
+			}
 			std::cout << "# Test ok thread " << seed << std::endl;
-			
 		  }
 		  
+#ifndef SECUMUL
 		  if ( (it%fp.Write_its) ==0) {
 			//fp.write();
 			//fp.timestats(timestat/nseconds);
@@ -161,14 +208,15 @@ int main() {
 			dt = duration_cast<seconds>(dt_end-dt_be).count();
 		  
 			std::cout << "# " << seed<<  ": Time on core  " << nseconds << '\t' << "dt  " << dt << '\n' << std::endl;
-			
 			dt_be = steady_clock::now();
+
 		  }	
-		  
 		  it++;
+
+
+		
 		} while (nseconds < fp.RunTime - dt);
 		fp.printdiag();
-		
 		
 		#pragma omp critical  // to have the same staring point
 		{	
@@ -178,9 +226,89 @@ int main() {
 		  os_tot += fp.get_os();
 		  ts_tot += timestat;
 	
-		  
 		  onecore_time += nseconds;
 		}
+		
+#else		//rest of write()
+		  if ( (it%fp.Write_its) ==0) {
+			//fp.write();
+			//fp.timestats(timestat/nseconds);
+		  	//fp.Stattofile(timestat/nseconds);
+			
+			//time 
+			steady_clock::time_point time_end = steady_clock::now();
+			nseconds = duration_cast<seconds>(time_end-time_begin).count();
+		  	steady_clock::time_point dt_end = steady_clock::now();
+			dt = duration_cast<seconds>(dt_end-dt_be).count();
+		  
+			std::cout << "# " << seed<<  ": Time on core  " << nseconds << '\t' << "dt  " << dt << '\n' << std::endl;
+			dt_be = steady_clock::now();
+			if (fp.normcalc() > fp.normmin-1) {normcheck = false;} // checking if we reached the norm minimum
+		  }	
+		  it++;
+			
+		  //to go from one order step to the next 
+		  //the diagram has to be in the maximum order of before
+		  if (nseconds > fp.RunTime - dt && !(normcheck)) {
+			if(fp.get_order()== fp.get_max_order()) {maxordcheck = false;}
+		  }
+		} while (nseconds < fp.RunTime - dt || normcheck || maxordcheck);
+		
+		
+		#pragma omp ordered  // to have the same staring point
+		{	
+		  std::cout << "# Combine thread " << seed << std::endl;
+		  if (ordit == 0) {Data_tot[seed] = fp.get_Data();}
+		  uds_tot += fp.get_uds();
+		  os_tot += fp.get_os();
+		  ts_tot += timestat;
+	
+		  onecore_time += nseconds;
+		  
+		  SEibtemp.col(seed) = fp.get_SEib();
+		  Normstemp.col(seed) = fp.get_NormDiag();
+		  Endstemp.col(seed) = fp.get_EndDiag();
+		  nnormstemp += fp.normcalc();
+		  nendstemp += fp.endcalc();		  
+		}
+		
+		//transfering Data (needs to be done just once => single
+		if (seed == nseeds - 1) {
+		  SEib += SEibtemp;
+		  Norms.push_back(Normstemp);
+		  Ends.push_back(Endstemp);
+		  nnorms.push_back(nnormstemp);
+		  nends.push_back(nendstemp);
+		  minmax.push_back(fp.get_minmax());
+		}
+			
+		// time per  order step
+		steady_clock::time_point Cumdt_end = steady_clock::now();
+		Cumdt = duration_cast<seconds>(Cumdt_end-Cumdt_be).count();
+		/*
+		#pragma omp ordered  
+		{
+		  ordstsz_calc += fp.check_ordstsz(Cumdt)/nseeds;
+		}
+		
+		#pragma omp barrier
+		fp.set_ordstsz(ordstsz_calc);
+		*/
+		fp.ord_step();
+		ordit++;
+		std::cout << "# Order Step thread " << seed << std::endl;
+		
+		/*
+		#pragma omp barrier
+		#pragma omp single nowait
+		{ordstsz_calc=0.;}
+		*/
+		//total time 
+		steady_clock::time_point Cumt_end = steady_clock::now();
+		Cumt = duration_cast<seconds>(Cumt_end-Cumt_be).count();
+		
+		} while (Cumt < fp.TotRunTime - Cumdt);
+#endif
 		
 		
 	  }
@@ -192,11 +320,45 @@ int main() {
 	
 	//averages	
 	//all
+#ifdef SECUMUL
+	ArrayXXd all_orders(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
+	all_orders << Data_tot[0].col(0), ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
+	for (int i =0; i < nseeds ; i++)
+	  all_orders.col(1) += SEib.col(i);
+	all_orders.col(1) /= static_cast<double>(nseeds);
+	
+	//Compare first end and Norm Diagram
+	ArrayXXd Norm_first(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
+	Norm_first << Data_tot[0].col(0), ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
+	for (int i =0; i < nseeds ; i++)
+	  Norm_first.col(1) += Norms[1].col(i);
+	Norm_first.col(1) /= static_cast<double>(nseeds);
+	
+	ArrayXXd End_first(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
+	End_first << Data_tot[0].col(0), ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
+	for (int i =0; i < nseeds ; i++)
+	  End_first.col(1) += Ends[0].col(i);
+	End_first.col(1) /= static_cast<double>(nseeds);
+	
+	//Compare last end and Norm Diagram
+	ArrayXXd Norm_last(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
+	Norm_last << Data_tot[0].col(0), ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
+	for (int i =0; i < nseeds ; i++)
+	  Norm_last.col(1) += Norms[Norms.size()-1].col(i);
+	Norm_last.col(1) /= static_cast<double>(nseeds);
+	
+	ArrayXXd End_last(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
+	End_last << Data_tot[0].col(0), ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
+	for (int i =0; i < nseeds ; i++)
+	  End_last.col(1) += Ends[Ends.size()-2].col(i);
+	End_last.col(1) /= static_cast<double>(nseeds);
+#else
 	ArrayXXd all_orders(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
 	all_orders << Data_tot[0].col(0), ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
 	for (int i =0; i < nseeds ; i++)
 	  all_orders.col(1) += Data_tot[i].col(1);
 	all_orders.col(1) /= static_cast<double>(nseeds);
+#endif
 	
 	//zero order
 	ArrayXXd zero_order(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
@@ -226,10 +388,19 @@ int main() {
 	second_orderb.col(1) /=  static_cast<double>(nseeds);
 	
 	
+	
 	//errors
 	if (nseeds > 3) {
 	  for (int i=0; i<nseeds ; i++) {
+#ifdef SECUMUL
+		all_orders.col(2) += (SEib.col(i)-all_orders.col(1)).pow(2); 
+		Norm_first.col(2) += (Norms[1].col(i)-Norm_first.col(1)).pow(2);
+		End_first.col(2) += (Ends[0].col(i)-End_first.col(1)).pow(2);
+		Norm_last.col(2) += (Norms[Norms.size()-1].col(i)-Norm_first.col(1)).pow(2);
+		End_last.col(2) += (Ends[Ends.size()-2].col(i)-End_first.col(1)).pow(2);
+#else
 		all_orders.col(2) += (Data_tot[i].col(1)-all_orders.col(1)).pow(2); 
+#endif
 		zero_order.col(2) += (Data_tot[i].col(2)-zero_order.col(1)).pow(2);
 		first_order.col(2) += (Data_tot[i].col(3)-first_order.col(1)).pow(2); 
 		second_ordera.col(2) += (Data_tot[i].col(4)-second_ordera.col(1)).pow(2); 
@@ -237,15 +408,25 @@ int main() {
 	  }
 	  
 	  double norm = 1/static_cast<double>(nseeds*(nseeds-1));
+#ifdef SECUMUL
+	  Norm_first.col(2) *= norm;
+	  Norm_first.col(2) = Norm_first.col(2).sqrt();
+	  End_first.col(2) *= norm;
+	  End_first.col(2) = End_first.col(2).sqrt();
+	  Norm_last.col(2) *= norm;
+	  Norm_last.col(2) = Norm_last.col(2).sqrt();
+	  End_last.col(2) *= norm;
+	  End_last.col(2) = End_last.col(2).sqrt();
+#endif
 	  all_orders.col(2) *= norm;
-	  zero_order.col(2) *= norm;
-	  first_order.col(2) *= norm;
-	  second_ordera.col(2) *= norm;
-	  second_orderb.col(2) *= norm;
 	  all_orders.col(2) = all_orders.col(2).sqrt();
+	  zero_order.col(2) *= norm;
 	  zero_order.col(2) = zero_order.col(2).sqrt();
+	  first_order.col(2) *= norm;
 	  first_order.col(2) = first_order.col(2).sqrt();
+	  second_ordera.col(2) *= norm;
 	  second_ordera.col(2) = second_ordera.col(2).sqrt();
+	  second_orderb.col(2) *= norm;
 	  second_orderb.col(2) = second_orderb.col(2).sqrt();
 	  }
 	  
@@ -268,6 +449,24 @@ int main() {
 	std::ofstream secondb("data/second_orderb");
 	secondb << second_orderb << '\n';
 	secondb.close();
+
+#ifdef SECUMUL
+	std::ofstream Nf("data/Norm_first");  
+	Nf << Norm_first << '\n';
+	Nf.close();
+	
+	std::ofstream Ef("data/End_first");  
+	Ef << End_first << '\n';
+	Ef.close();
+	
+	std::ofstream Nl("data/Norm_last");  
+	Nl << Norm_last << '\n';
+	Nl.close();
+	
+	std::ofstream El("data/End_last");  
+	El << End_last << '\n';
+	El.close();
+#endif	
 	
 	
 	//statistics
