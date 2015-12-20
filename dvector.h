@@ -105,9 +105,14 @@ double vsq(const vecT & vec){
 }
 
 
+template <typename T1, std::size_t N = 0> struct is_container_of_num : std::false_type {};
+template<> struct is_container_of_num<std::vector< int >> : std::true_type { };
+template<> struct is_container_of_num<std::vector< double >> : std::true_type { };
+template <std::size_t N> struct is_container_of_num<std::array<int, N> > : std::true_type { };
+template <std::size_t N> struct is_container_of_num<std::array<double, N> > : std::true_type { };
 
 //print
-template <typename vecT, typename std::enable_if<is_container<vecT>::value, int>::type = 0>
+template <typename vecT, typename std::enable_if<is_container_of_num<vecT>::value, int>::type = 0>
 std::ostream& operator<<(std::ostream& os, const vecT & vec) {
   os<< "(";
   auto it= vec.begin();
@@ -123,6 +128,24 @@ std::ostream& operator<<(std::ostream& os, const vecT & vec) {
   return os;
 }
 
+template <typename T1, std::size_t N = 0> struct is_container_in_container : std::false_type {};
+template <typename T1> struct is_container_in_container<std::vector<std::vector<T1>> > : std::true_type { };
+
+template <typename vecvecT, typename std::enable_if<is_container_in_container<vecvecT>::value, int>::type = 0>
+std::ostream& operator<<(std::ostream& os, const vecvecT & vec) {
+  for (std::size_t i =0; i< vec[0].size(); i++){ 
+	auto it= vec.begin();
+	for (auto x : vec) {
+	  if (it != vec.end()-1){ 
+		os << x[i] << '\t';
+		it++;
+	  } else {
+	  os << x[i] << '\n';
+	  }
+	}
+  }
+  return os;
+}
 
 
 

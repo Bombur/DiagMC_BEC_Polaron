@@ -35,12 +35,10 @@ using namespace Eigen;
 class Diagram {
   private:
 	std::function<double()> drnd;
+	int order;
 	std::vector< vertex > times;
 	std::vector< std::array<double,3> > phprop; // to control the electron prop vector
 	std::vector< std::array<double,3> > elprop;
-	//std::vector< arch> qs;
-	int order;
-	
 	  
   public:
 	Diagram();

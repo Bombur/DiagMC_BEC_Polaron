@@ -14,6 +14,7 @@ void Diagram::test(const double & qc) {
 	  if (fabs(phprop[0][i] - phprop[2*order][i]) > 0.0000001) {throw phproperr();}
 	  if (fabs(elprop[0][i] - elprop[2*order][i]) > 0.0000001) {throw elproperr();}
 	}
+	  
 	
 	VectorXi tmp=VectorXi::Zero((2*order)+2);
 	for (int i=0; i<(2*order)+2; i++) {
@@ -51,7 +52,8 @@ void Diagram::test(const double & qc) {
 
 void Diagram::printall() {
   
-  std::cout <<  order << '\t' << drnd()  << std::endl;
+  std::cout << drnd()  << std::endl;
+  std::cout <<  order << '\n';
   std::cout <<'\n';
   for (vertex i: times){
 	  std::cout << i.t <<'\t';
@@ -71,14 +73,14 @@ void Diagram::printall() {
 
   std::cout << pr_arc <<'\t' << pr_tauin << '\t' << pr_taufin  << std::endl;
   std::cout <<'\n';
-	std::cout << pr_tau1.t <<'\t';
-	std::cout << pr_tau1.link <<'\t';
-	std::cout <<'\n';
-	std::cout <<'\n';
-	std::cout << pr_tau2.t <<'\t';
-	std::cout << pr_tau2.link <<'\t';
-	std::cout <<'\n';
-	std::cout <<'\n';
+  std::cout << pr_tau1.t <<'\t';
+  std::cout << pr_tau1.link <<'\t';
+  std::cout <<'\n';
+  std::cout <<'\n';
+  std::cout << pr_tau2.t <<'\t';
+  std::cout << pr_tau2.link <<'\t';
+  std::cout <<'\n';
+  std::cout <<'\n';
   std::cout << pr_q <<'\n';
   std::cout <<'\n';
   std::cout << pr_p <<'\n';

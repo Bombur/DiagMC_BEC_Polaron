@@ -19,53 +19,49 @@ void DiagMC::ord_step() {
   nends.push_back(0);
   ordstep += 1;
   
-  SEib= ArrayXi::Zero(taubin);
-  Norms = ArrayXi::Zero(taubin);
-  Ends = ArrayXi::Zero(taubin);
+  SEib= ArrayXd::Zero(taubin);
+  Norms = ArrayXd::Zero(taubin);
+  Ends = ArrayXd::Zero(taubin);
 }
 
 
-int DiagMC::normcalc() {
-  if(ordstep == 0) { // case where everything is still saved to data 
-	nnorms.at(0) = Data.col(1).sum();
-  } else {
-	nnorms[ordstep] = Norms.sum();
-  }  
+double DiagMC::normcalc() {
+  nnorms[ordstep] = Norms.sum();
   return nnorms[ordstep]; 
 }
 
-int DiagMC::endcalc() {
+double DiagMC::endcalc() {
   nends[ordstep] = Ends.sum();
   return nends[ordstep];
 }
 
-std::vector<int> DiagMC::get_minmax() {
-  std::vector<int> tmp(2);
-  tmp[0] = minord;
-  tmp[1] = maxord;
+std::vector<double> DiagMC::get_minmax() {
+  std::vector<double> tmp(2);
+  tmp[0] = static_cast<double>(minord);
+  tmp[1] = static_cast<double>(maxord);
   return tmp;
 }
 
 double DiagMC::pref_calc(){
   double pref = 1.;
   for (int i = 0; i < ordstep; i++) {
-	pref *= static_cast<double>(nends[i]);
-	pref /= static_cast<double>(nnorms[i+1]);
+	pref *= nends[i];
+	pref /= nnorms[i+1];
   }
-  return pref * static_cast<double>(taubin)/taumax/static_cast<double>(nnorms[0]);
+  return pref * static_cast<double>(taubin)/taumax/nnorms[0];
 }
   
 
 ArrayXd DiagMC::get_SEib(){
-  return SEib.cast<double>() * pref_calc();
+  return SEib * pref_calc();
 }
 
 ArrayXd DiagMC::get_NormDiag(){
-  return Norms.cast<double>() * pref_calc();
+  return Norms * pref_calc();
 }
 
 ArrayXd DiagMC::get_EndDiag(){
-  return Ends.cast<double>() * pref_calc();
+  return Ends * pref_calc();
 }
 
 

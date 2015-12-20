@@ -29,7 +29,7 @@ int main() {
 	
 	pt::ptree config;
 	pt::read_json("DiagMC_BEC.json", config);
-	
+  
 	//Total Statistics and Data
 	std::vector<ArrayXXd> Data_tot(nseeds);
 	  	
@@ -37,56 +37,66 @@ int main() {
 	ArrayXi os_tot = ArrayXi::Zero(40);
 	ArrayXd ts_tot = ArrayXd::Zero(8);
 	
-	//Statistics and Data for SECUMUL
+	//constants and parameters
+	double onecore_time= 0;
+  
+	
 #ifdef SECUMUL
+	//Statistics and Data for SECUMUL
 	ArrayXXd SEib = ArrayXXd::Zero(config.get<int>("Tau_bin"),nseeds);
 	std::vector<ArrayXXd> Norms;
 	std::vector<ArrayXXd> Ends;
-	std::vector<int> nnorms;
-	std::vector<int> nends;
-	std::vector<std::vector<int>> minmax;
-	
-	//temporary
-	ArrayXXd SEibtemp(config.get<int>("Tau_bin"),nseeds);
-	ArrayXXd Normstemp(config.get<int>("Tau_bin"),nseeds);
-	ArrayXXd Endstemp(config.get<int>("Tau_bin"),nseeds);
-	int nnormstemp;
-	int nendstemp;
-		
-	double ordstsz_calc=0.;
+	std::vector<double> nnorms;
+	std::vector<double> nends;
+	std::vector<std::vector<double>> minmax;
 #endif
 	
-	//constants and parameters
-	double onecore_time= 0;
-		
-	#pragma omp parallel num_threads(nseeds) 
+	//container for pointer to all parallel DiagMCs to reuse parallelism
+	std::vector<DiagMC *> DiagMC_pl(nseeds); 
+	
+	//Initialization
+	#pragma omp parallel for num_threads(nseeds) 
+	for (int seed = 0; seed < nseeds; seed++)
 	{
-
-	  #pragma omp for ordered schedule(static, 1)
-	  for (int seed = 0; seed < nseeds; seed++)
-	  {
-		// initialization
-		DiagMC fp(seed, config);
+		DiagMC_pl[seed] = new DiagMC(seed,config);
 		
 		#pragma omp critical  // to have the same staring point
 		{
-		  std::cout << "# Initialize thread " << seed << std::endl;
+		  std::cout << "# Initialized thread " << seed << std::endl;
 		}
-		
+	}
+	  
 #ifdef SECUMUL
-		//Total time Control
-		steady_clock::time_point Cumt_be = steady_clock::now();  //start time
+	  	//Total time Control
+	  steady_clock::time_point Cumt_be = steady_clock::now();  //start time
+	  steady_clock::time_point Cumdt_be;
+	  double Cumt =0.;
+	  double Cumdt= 0.;
+	  
+	  //temporary Containers to transfer Data
+	  ArrayXXd SEibtemp(config.get<int>("Tau_bin"),nseeds);
+	  ArrayXXd Normstemp(config.get<int>("Tau_bin"),nseeds);
+	  ArrayXXd Endstemp(config.get<int>("Tau_bin"),nseeds);
+	  int nnormstemp;
+	  int nendstemp;
+
+	  // -------------------- Order Step Loop----------------
+	  //order steps iterator
+	  int ordit =0;
+	  //Order Step Size adaption
+	  double ordstsz_calc=0.;
+	  std::cout << "# Order Loop Starting! "<< std::endl;
+	  do{
+		std::cout <<'\n'<< "# ------ Order Step " << ordit << "------" <<'\n' << std::endl;
 		steady_clock::time_point Cumdt_be = steady_clock::now();
-  		double Cumt =0.;
-		double Cumdt= 0.;
-		
-		//order steps iterator
-		int ordit =0;
-		
-		do{
-		bool maxordcheck = true;
-		bool normcheck = true;
 #endif
+		
+		
+	  #pragma omp parallel for ordered schedule(static, 1)
+	  for (int seed = 0; seed < nseeds; seed++)
+	  {	
+		DiagMC * bec = DiagMC_pl[seed];
+  	  
 		//time control
 		steady_clock::time_point time_begin = steady_clock::now();  //start time
 		ArrayXd timestat = ArrayXd::Zero(8);
@@ -100,70 +110,77 @@ int main() {
 		
 		//iterator
 		int it= 1;
+		
+#ifdef SECUMUL//Control of Do Loop
+		bool maxordcheck = false;
+		bool normcheck = false;
+		bool endcheck = false;
+#endif
+		
 		do {
-		  double action = fp.drnd();
+		  double action = bec->drnd();
 			
-		  if (action < fp.Prem) {
+		  if (action < bec->Prem) {
 			steady_clock::time_point t_rem_be = steady_clock::now();
-			fp.remove();
+			bec->remove();
 			steady_clock::time_point t_rem_end = steady_clock::now();
 			timestat(3) += static_cast<double>((t_rem_end-t_rem_be).count())* steady_clock::period::num / steady_clock::period::den ;
 							
 		  }
-		  else if ((action-fp.Prem)<fp.Pins) {
+		  else if ((action-bec->Prem)<bec->Pins) {
 			steady_clock::time_point t_ins_be= steady_clock::now();
-			fp.insert();
+			bec->insert();
 			steady_clock::time_point t_ins_end = steady_clock::now();
 			timestat(2) += static_cast<double>((t_ins_end-t_ins_be).count())* steady_clock::period::num / steady_clock::period::den ;
 		  }
-		  else if ((action-fp.Prem-fp.Pins) < fp.Pct) {
+		  else if ((action-bec->Prem-bec->Pins) < bec->Pct) {
 			
 			steady_clock::time_point t_ct_be= steady_clock::now();
-			fp.change_tau();
+			bec->change_tau();
 			steady_clock::time_point t_ct_end = steady_clock::now();
 			timestat(0) += static_cast<double>((t_ct_end-t_ct_be).count())* steady_clock::period::num / steady_clock::period::den ;
 		  }
 			
-		  else if ((action-fp.Prem-fp.Pins-fp.Pct) < fp.Pdq) {
+		  else if ((action-bec->Prem-bec->Pins-bec->Pct) < bec->Pdq) {
 			steady_clock::time_point t_dq_be= steady_clock::now();
-			fp.dq();
+			bec->dq();
 			steady_clock::time_point t_dq_end = steady_clock::now();
 			timestat(5) += static_cast<double>((t_dq_end-t_dq_be).count())* steady_clock::period::num / steady_clock::period::den ;
 				
 		  }
 			
-		  else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq) < fp.Psw) {
+		  else if ((action- bec->Prem- bec->Pins - bec->Pct - bec->Pdq) < bec->Psw) {
 				  
 			steady_clock::time_point t_sw_be= steady_clock::now();
-			fp.swap();
+			bec->swap();
 			steady_clock::time_point t_sw_end = steady_clock::now();
 			timestat(4) += static_cast<double>((t_sw_end-t_sw_be).count())* steady_clock::period::num / steady_clock::period::den ;
 				 
 		  }
 				
-		  else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq- fp.Psw) < fp.Pctho) {
+		  else if ((action- bec->Prem- bec->Pins - bec->Pct - bec->Pdq- bec->Psw) < bec->Pctho) {
 				  
 			steady_clock::time_point t_ctho_be= steady_clock::now();
-			fp.ct();
+			bec->ct();
 			steady_clock::time_point t_ctho_end = steady_clock::now();
 			timestat(1) += static_cast<double>((t_ctho_end-t_ctho_be).count())* steady_clock::period::num / steady_clock::period::den ;
 				 
 		  }
 
 #ifdef FP
-		  else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq - fp.Psw - fp.Pctho) < fp.Piae) {
+		  else if ((action- bec->Prem- bec->Pins - bec->Pct - bec->Pdq - bec->Psw - bec->Pctho) < bec->Piae) {
 				  
 			steady_clock::time_point t_iae_be= steady_clock::now();
-			//fp.insatend();
+			//bec->insatend();
 			steady_clock::time_point t_iae_end = steady_clock::now();
 			timestat(6) += static_cast<double>((t_iae_end-t_iae_be).count())* steady_clock::period::num / steady_clock::period::den ;
 				 
 		  }
 				
-		  else if ((action- fp.Prem- fp.Pins - fp.Pct - fp.Pdq - fp.Psw - fp.Pctho - fp.Piae) < fp.Prae) {
+		  else if ((action- bec->Prem- bec->Pins - bec->Pct - bec->Pdq - bec->Psw - bec->Pctho - bec->Piae) < bec->Prae) {
 				  
 			steady_clock::time_point t_rae_be = steady_clock::now();
-			//fp.rematend();
+			//bec->rematend();
 			steady_clock::time_point t_rae_end = steady_clock::now();
 			timestat(7) += static_cast<double>((t_rae_end-t_rae_be).count())* steady_clock::period::num / steady_clock::period::den ;
 		  }
@@ -172,19 +189,19 @@ int main() {
 			assert(0);
 		  }
 			
-		  if ((it%fp.Meas_its) ==0) {
+		  if ((it%bec->Meas_its) ==0) {
 #ifdef SECUMUL
-			meas += fp.measure(ordit);
+			meas += bec->measure(ordit);
 #else
-			meas += fp.measure(0);
+			meas += bec->measure(0);
 #endif
 		  }
 			
-		  if ( (it%fp.Test_its) ==0) {
+		  if ( (it%bec->Test_its) ==0) {
 			try{
-			  fp.test();
+			  bec->test();
 #ifdef SELFENERGY
-			  if (meas < fp.Meas_its) {throw meascheck();}
+			  if (meas < bec->Meas_its) {throw meascheck();}
 #endif
 #ifdef SECUMUL
 #endif
@@ -196,10 +213,10 @@ int main() {
 		  }
 		  
 #ifndef SECUMUL
-		  if ( (it%fp.Write_its) ==0) {
-			//fp.write();
-			//fp.timestats(timestat/nseconds);
-		  	//fp.Stattofile(timestat/nseconds);
+		  if ( (it%bec->Write_its) ==0) {
+			//bec->write();
+			//bec->timestats(timestat/nseconds);
+		  	//bec->Stattofile(timestat/nseconds);
 			
 			//time 
 			steady_clock::time_point time_end = steady_clock::now();
@@ -215,104 +232,112 @@ int main() {
 
 
 		
-		} while (nseconds < fp.RunTime - dt);
-		fp.printdiag();
+		} while (nseconds < bec->RunTime - dt);
 		
 		#pragma omp critical  // to have the same staring point
 		{	
 		  std::cout << "# Combine thread " << seed << std::endl;
-		  Data_tot[seed] = fp.get_Data();
-		  uds_tot += fp.get_uds();
-		  os_tot += fp.get_os();
+		  Data_tot[seed] = bec->get_Data();
+		  uds_tot += bec->get_uds();
+		  os_tot += bec->get_os();
 		  ts_tot += timestat;
 	
 		  onecore_time += nseconds;
 		}
+	  }//end of omp for loop
 		
-#else		//rest of write()
-		  if ( (it%fp.Write_its) ==0) {
-			//fp.write();
-			//fp.timestats(timestat/nseconds);
-		  	//fp.Stattofile(timestat/nseconds);
-			
+#else	//-------------2n Part of Order Loop--------------------------
+
+		  if ( (it%bec->Write_its) ==0) {
 			//time 
 			steady_clock::time_point time_end = steady_clock::now();
 			nseconds = duration_cast<seconds>(time_end-time_begin).count();
 		  	steady_clock::time_point dt_end = steady_clock::now();
 			dt = duration_cast<seconds>(dt_end-dt_be).count();
 		  
-			std::cout << "# " << seed<<  ": Time on core  " << nseconds << '\t' << "dt  " << dt << '\n' << std::endl;
+			std::cout << "# " << seed<<  ": Time in Order Step  " << nseconds << '\t' << "dt  " << dt << '\n' << std::endl;
 			dt_be = steady_clock::now();
-			if (fp.normcalc() > fp.normmin-1) {normcheck = false;} // checking if we reached the norm minimum
+			if (bec->normcalc() > bec->normmin-1) {normcheck = true;} // checking if we reached the norm minimum
+			if (bec->endcalc() > bec->endmin-1) {endcheck = true;} // checking if we reached the end minimum
 		  }	
 		  it++;
 			
 		  //to go from one order step to the next 
 		  //the diagram has to be in the maximum order of before
-		  if (nseconds > fp.RunTime - dt && !(normcheck)) {
-			if(fp.get_order()== fp.get_max_order()) {maxordcheck = false;}
+		  if (nseconds > bec->RunTime - dt && normcheck && endcheck) {
+			if(bec->get_order()== bec->get_max_order()) {maxordcheck = true;}
 		  }
-		} while (nseconds < fp.RunTime - dt || normcheck || maxordcheck);
+		  
+		} while ((nseconds < bec->RunTime - dt || !(normcheck) || !(endcheck) ||!(maxordcheck)) && nseconds < bec->TotRunTime - dt);
 		
 		
-		#pragma omp ordered  // to have the same staring point
+		#pragma omp critical  // to have the same staring point
 		{	
-		  std::cout << "# Combine thread " << seed << std::endl;
-		  if (ordit == 0) {Data_tot[seed] = fp.get_Data();}
-		  uds_tot += fp.get_uds();
-		  os_tot += fp.get_os();
+		  if (ordit == 0) {Data_tot[seed] = bec->get_Data();}
+		  uds_tot += bec->get_uds();
+		  os_tot += bec->get_os();
 		  ts_tot += timestat;
 	
 		  onecore_time += nseconds;
 		  
-		  SEibtemp.col(seed) = fp.get_SEib();
-		  Normstemp.col(seed) = fp.get_NormDiag();
-		  Endstemp.col(seed) = fp.get_EndDiag();
-		  nnormstemp += fp.normcalc();
-		  nendstemp += fp.endcalc();		  
+		  //transfering Data
+		  SEibtemp.col(seed) = bec->get_SEib();
+		  Normstemp.col(seed) = bec->get_NormDiag();
+		  Endstemp.col(seed) = bec->get_EndDiag();
+		  nnormstemp = bec->normcalc();
+		  nendstemp = bec->endcalc();
+		  std::cout << "# Transfered Data thread " << seed << std::endl;
 		}
+		} //end of omp for loop
 		
-		//transfering Data (needs to be done just once => single
-		if (seed == nseeds - 1) {
+		//Not Paralell anymore
+		//Combining Data
+		{
 		  SEib += SEibtemp;
-		  Norms.push_back(Normstemp);
-		  Ends.push_back(Endstemp);
+		  if (ordit < 4) {
+			Norms.push_back(Normstemp);
+			Ends.push_back(Endstemp);
+		  } else {
+			Norms[2]=Norms[3];
+			Norms[3]=Normstemp;
+			Ends[2]=Ends[3];
+			Ends[3]=Endstemp;
+		  }			
 		  nnorms.push_back(nnormstemp);
 		  nends.push_back(nendstemp);
-		  minmax.push_back(fp.get_minmax());
+		  minmax[0].push_back(DiagMC_pl[0]->get_minmax().at(0));
+		  minmax[1].push_back(DiagMC_pl[0]->get_minmax().at(1));
+		  std::cout << "# Combined Data!" << std::endl;
 		}
 			
 		// time per  order step
 		steady_clock::time_point Cumdt_end = steady_clock::now();
 		Cumdt = duration_cast<seconds>(Cumdt_end-Cumdt_be).count();
-		/*
-		#pragma omp ordered  
+		
+		#pragma omp parallel for ordered schedule(static, 1)
+		for (int seed = 0; seed < nseeds; seed++)
 		{
-		  ordstsz_calc += fp.check_ordstsz(Cumdt)/nseeds;
+		  DiagMC_pl[seed]->ord_step();
 		}
 		
-		#pragma omp barrier
-		fp.set_ordstsz(ordstsz_calc);
-		*/
-		fp.ord_step();
 		ordit++;
-		std::cout << "# Order Step thread " << seed << std::endl;
 		
-		/*
-		#pragma omp barrier
-		#pragma omp single nowait
-		{ordstsz_calc=0.;}
-		*/
-		//total time 
 		steady_clock::time_point Cumt_end = steady_clock::now();
 		Cumt = duration_cast<seconds>(Cumt_end-Cumt_be).count();
 		
-		} while (Cumt < fp.TotRunTime - Cumdt);
+		std::cout << "\n#Total Time " << Cumt << '\t' << "dt  " << Cumdt << '\n' << std::endl;
+		
+		} while (Cumt < DiagMC_pl[0]->TotRunTime - Cumdt);
 #endif
-		
-		
+	   
+	  
+	  //Deleting the vector of DiagMC Pointers
+	  #pragma omp for ordered schedule(static, 1)
+	  for (int seed = 0; seed < nseeds; seed++)
+	  {	
+		delete DiagMC_pl[seed];
 	  }
-	}
+	
 	
 	uds_tot.col(4)=uds_tot.col(3)/uds_tot.col(1);
 	uds_tot.col(5)=uds_tot.col(3)/uds_tot.col(0);
@@ -344,13 +369,13 @@ int main() {
 	ArrayXXd Norm_last(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
 	Norm_last << Data_tot[0].col(0), ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
 	for (int i =0; i < nseeds ; i++)
-	  Norm_last.col(1) += Norms[Norms.size()-1].col(i);
+	  Norm_last.col(1) += Norms[3].col(i);
 	Norm_last.col(1) /= static_cast<double>(nseeds);
 	
 	ArrayXXd End_last(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
 	End_last << Data_tot[0].col(0), ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
 	for (int i =0; i < nseeds ; i++)
-	  End_last.col(1) += Ends[Ends.size()-2].col(i);
+	  End_last.col(1) += Ends[2].col(i);
 	End_last.col(1) /= static_cast<double>(nseeds);
 #else
 	ArrayXXd all_orders(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
@@ -396,8 +421,8 @@ int main() {
 		all_orders.col(2) += (SEib.col(i)-all_orders.col(1)).pow(2); 
 		Norm_first.col(2) += (Norms[1].col(i)-Norm_first.col(1)).pow(2);
 		End_first.col(2) += (Ends[0].col(i)-End_first.col(1)).pow(2);
-		Norm_last.col(2) += (Norms[Norms.size()-1].col(i)-Norm_first.col(1)).pow(2);
-		End_last.col(2) += (Ends[Ends.size()-2].col(i)-End_first.col(1)).pow(2);
+		Norm_last.col(2) += (Norms[3].col(i)-Norm_last.col(1)).pow(2);
+		End_last.col(2) += (Ends[2].col(i)-End_last.col(1)).pow(2);
 #else
 		all_orders.col(2) += (Data_tot[i].col(1)-all_orders.col(1)).pow(2); 
 #endif
@@ -451,28 +476,28 @@ int main() {
 	secondb.close();
 
 #ifdef SECUMUL
-	std::ofstream Nf("data/Norm_first");  
+	std::ofstream Nf("data/secumul/Norm_first");  
 	Nf << Norm_first << '\n';
 	Nf.close();
 	
-	std::ofstream Ef("data/End_first");  
+	std::ofstream Ef("data/secumul/End_first");  
 	Ef << End_first << '\n';
 	Ef.close();
 	
-	std::ofstream Nl("data/Norm_last");  
+	std::ofstream Nl("data/secumul/Norm_last");  
 	Nl << Norm_last << '\n';
 	Nl.close();
 	
-	std::ofstream El("data/End_last");  
+	std::ofstream El("data/secumul/End_last");  
 	El << End_last << '\n';
 	El.close();
 #endif	
 	
 	
 	//statistics
-	std::ofstream uds_outfile("data/uds_tot");
-	std::ofstream os_outfile("data/os_tot");
-	std::ofstream ts_outfile("data/ts_tot");
+	std::ofstream uds_outfile("data/stats/uds_tot");
+	std::ofstream os_outfile("data/stats/os_tot");
+	std::ofstream ts_outfile("data/stats/ts_tot");
 	
 	uds_outfile << "Update Statistics" << '\n';
     uds_outfile << "*************************************" << '\n';
@@ -493,13 +518,28 @@ int main() {
 	os_outfile.close();
 	ts_outfile.close();
 	
+#ifdef SECUMUL
+	ArrayXXd minmax_out(minmax[0].size(), 4);
+	minmax_out.col(0) = Map<const Array<double, 1, Dynamic> > (minmax[0].data(), minmax[0].size());
+	minmax_out.col(1) = Map<const Array<double, 1, Dynamic> > (minmax[1].data(), minmax[1].size());
+	minmax_out.col(2) = Map<const Array<double, 1, Dynamic> > (nnorms.data(), minmax[0].size());
+	minmax_out.col(3) = Map<const Array<double, 1, Dynamic> > (nends.data(), minmax[1].size());
+	std::ofstream minmax_outfile("data/stats/minmax");
+	minmax_outfile << "Minimum Maximum Order Statistics" << '\n';
+    minmax_outfile << "*************************************" << '\n';
+	minmax_outfile << "Min \t Max  \t nMin \t nMax \n" ;
+	minmax_outfile << minmax_out;
+	minmax_outfile.close();
+#endif	
+	
 	int rem=std::system("rm -f ./data/*_core_*");  //removing the data from each core
 	
-	const std::string anacommand = "python3 data_ana.py " + config.get<std::string>("Peter_Path");
+	const std::string anacommand = "python3 data_ana.py";
 	std::cout << "# Analysing data, result = " << system(anacommand.c_str()) << std::endl;
+  
 	return 0;
 }
 
 
 
-	
+  

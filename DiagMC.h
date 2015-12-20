@@ -4,7 +4,7 @@
 
 //system
 #include <cstdlib>
-
+ 
 //exception
 #include "DiagMCException.h"
 
@@ -53,12 +53,12 @@ class DiagMC {
 	int maxord;
 #endif 
 	
-#ifdef FP 
+#ifdef FP  
 	double wp; //Froehlich Polaron Omega
 #endif
   
 	//Calculation variables
-	ArrayXXi Data;					//0:G(p,tau_i), 1:G0(p,tau_i), 2:G1(p,tau_i), 3:G2(p,tau_i)
+	ArrayXXd Data;					//0:G(p,tau_i), 1:G0(p,tau_i), 2:G1(p,tau_i), 3:G2(p,tau_i)
 	Diagram diag;
 	const double ctcor;		//maximum correction in ctho
 	const double qcor;		//maximum correction in dq
@@ -72,11 +72,11 @@ class DiagMC {
 	int ordstsz; // order step Size
 	int ordstep; // current order step
 #ifdef SECUMUL
-	ArrayXi SEib; //Self Energy inbetween minord and maxord
-	ArrayXi Norms; // Norm Diagrams for each order step
-	ArrayXi Ends; // End Diagrams for each step
-	std::vector<int> nnorms; //counts of being in norm Diagrams
-	std::vector<int> nends; // counts of being in end Diagrams
+	ArrayXd SEib; //Self Energy inbetween minord and maxord
+	ArrayXd Norms; // Norm Diagrams for each order step
+	ArrayXd Ends; // End Diagrams for each step
+	std::vector<double> nnorms; //counts of being in norm Diagrams
+	std::vector<double> nends; // counts of being in end Diagrams
 #endif
 			
 	//rows of stats: 0:change tau, 1:insert, 2:remove 3:swap, 4:swapoocc, 5:swapoc, 6:swapco, 7:ct_ho, 8:dq , 9:insatend, 10: rematend
@@ -110,6 +110,7 @@ class DiagMC {
 	
 	//Cumulative SE Calculation
 	const int normmin; // minimum number of points to do the next step
+	const int endmin; // minimum number of points to do the next step
 	const int TotRunTime; // Total Time
 #ifdef SECUMUL
 	int check_ordstsz(const double & Timeperorderstep);
@@ -117,9 +118,9 @@ class DiagMC {
 	void ord_step();  // sets the minimum and maximum order for the next step
 	int get_order() {return diag.get_order();}
 	int get_max_order() {return maxord;}			//return current maximum order
-	int normcalc();  //Calculates how often we have been in the norm Diagram
-	int endcalc(); //Calculates how often we have been in the end Diagram
-	std::vector<int> get_minmax();
+	double normcalc();  //Calculates how often we have been in the norm Diagram
+	double endcalc(); //Calculates how often we have been in the end Diagram
+	std::vector<double> get_minmax();
 	
 	//returning Data
 	double pref_calc();
@@ -165,6 +166,8 @@ class DiagMC {
 	
 	 
 	//DiagMC_test.cpp
+	double testg0p;
+	double count;
 	void test(); 
 	double weight_calc();
 	void printall();
