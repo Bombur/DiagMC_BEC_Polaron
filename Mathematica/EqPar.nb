@@ -1,0 +1,301 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 10.2' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      8995,        292]
+NotebookOptionsPosition[      8282,        261]
+NotebookOutlinePosition[      8617,        276]
+CellTagsIndexPosition[      8574,        273]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell["BEC Polaron", "Chapter",
+ CellChangeTimes->{{3.6549429007265863`*^9, 3.654942912550387*^9}}],
+
+Cell[CellGroupData[{
+
+Cell["Parameters", "Section",
+ CellChangeTimes->{{3.6549429682170153`*^9, 3.6549429713844748`*^9}}],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"\[Alpha]", "=", "5"}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"\[Mu]", "=", " ", 
+   RowBox[{"-", "2"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"mr", "=", "0.263158"}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"px", "=", "0"}], ";", " ", 
+  RowBox[{"py", " ", "=", "0"}], ";", " ", 
+  RowBox[{"pz", "=", "0"}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"tbeg", "=", "0"}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"qc", "=", " ", "200"}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"paper", "=", " ", 
+   RowBox[{"Import", "[", 
+    RowBox[{
+    "\"\</home/h/H.Guertner/theorie/BEC_Polaron/peter/fig3total\>\"", ",", 
+     "\"\<Table\>\""}], "]"}]}], ";"}]}], "Input",
+ CellChangeTimes->{{3.654943187517721*^9, 3.654943188825927*^9}, {
+  3.655111034599642*^9, 3.655111037106975*^9}, {3.656670581788019*^9, 
+  3.656670583035933*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Equations", "Section",
+ CellChangeTimes->{{3.654942928847124*^9, 3.654942946092062*^9}}],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"g0", "[", 
+    RowBox[{"pabs_", ",", " ", "t1_", ",", " ", "t2_"}], "]"}], ":=", " ", 
+   RowBox[{"Exp", "[", 
+    RowBox[{
+     RowBox[{"-", 
+      RowBox[{"(", 
+       RowBox[{
+        FractionBox[
+         SuperscriptBox["pabs", "2"], "2"], "-", "\[Mu]"}], ")"}]}], 
+     RowBox[{"(", 
+      RowBox[{"t2", "-", "t1"}], ")"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"g0cos", "[", 
+    RowBox[{
+    "q1abs_", ",", "q2abs_", ",", " ", "t1_", ",", " ", "t2_", ",", 
+     "costheta_"}], "]"}], ":=", " ", 
+   RowBox[{"Exp", "[", 
+    RowBox[{
+     RowBox[{"-", 
+      RowBox[{"(", 
+       RowBox[{
+        FractionBox[
+         RowBox[{
+          SuperscriptBox["q1abs", "2"], "+", 
+          SuperscriptBox["q2abs", "2"], "+", 
+          RowBox[{"2", "*", "q1abs", "*", "q2abs", "*", "costheta"}]}], "2"], 
+        "-", "\[Mu]"}], ")"}]}], 
+     RowBox[{"(", 
+      RowBox[{"t2", "-", "t1"}], ")"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"wq", "[", "qabs_", "]"}], " ", ":=", 
+   SqrtBox[
+    RowBox[{
+     FractionBox[
+      SuperscriptBox["qabs", "2"], "2"], "*", 
+     RowBox[{"(", 
+      RowBox[{"1", "+", 
+       FractionBox[
+        SuperscriptBox["qabs", "2"], "2"]}], ")"}]}]]}], " ", 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"dq", " ", "[", 
+    RowBox[{"qabs_", ",", " ", "t1_", ",", "t2_"}], "]"}], ":=", 
+   RowBox[{"Exp", "[", 
+    RowBox[{
+     RowBox[{"-", 
+      RowBox[{"wq", "[", "qabs", "]"}]}], "*", 
+     RowBox[{"(", 
+      RowBox[{"t2", "-", "t1"}], ")"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"vq2", "[", "qabs_", "]"}], ":=", 
+   RowBox[{
+    FractionBox["Pi", "2"], "*", "\[Alpha]", " ", "*", 
+    RowBox[{"(", 
+     RowBox[{"1", "+", 
+      FractionBox["1", "mr"]}], ")"}], "*", 
+    SqrtBox[
+     FractionBox[
+      SuperscriptBox["qabs", "2"], 
+      RowBox[{
+       SuperscriptBox["qabs", "2"], "+", "2"}]]]}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"g0pw", "[", 
+    RowBox[{"p_", ",", " ", "\[Omega]_", ",", "\[CurlyEpsilon]_"}], " ", 
+    "]"}], ":=", " ", 
+   FractionBox["1", 
+    RowBox[{"\[Omega]", "-", 
+     FractionBox[
+      SuperscriptBox["p", "2"], "2"], "+", "\[Mu]", "+", 
+     RowBox[{"\[ImaginaryI]", "*", "\[CurlyEpsilon]"}]}]]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"g0piw", "[", 
+    RowBox[{"p_", ",", " ", "\[Omega]_"}], " ", "]"}], ":=", " ", 
+   FractionBox["1", 
+    RowBox[{
+     RowBox[{"\[ImaginaryI]", "*", "\[Omega]"}], "-", 
+     FractionBox[
+      SuperscriptBox["p", "2"], "2"], "+", "\[Mu]"}]]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"g0pwcos", "[", 
+    RowBox[{
+    "q1abs_", ",", "q2abs_", ",", "\[Omega]_", ",", " ", "costheta_", ",", 
+     "\[CurlyEpsilon]_"}], " ", "]"}], ":=", " ", 
+   FractionBox["1", 
+    RowBox[{"\[Omega]", "-", 
+     FractionBox[
+      RowBox[{
+       SuperscriptBox["q1abs", "2"], "+", 
+       SuperscriptBox["q2abs", "2"], "+", 
+       RowBox[{"2", "*", "q1abs", "*", "q2abs", "*", "costheta"}]}], "2"], 
+     "+", "\[Mu]", "+", 
+     RowBox[{"\[ImaginaryI]", "*", "\[CurlyEpsilon]"}]}]]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"dqw", "[", 
+    RowBox[{"q_", ",", " ", "\[Omega]_", ",", "\[CurlyEpsilon]_"}], " ", 
+    "]"}], ":=", " ", 
+   FractionBox["1", 
+    RowBox[{"\[Omega]", "-", 
+     RowBox[{"wq", "[", "q", "]"}], "+", 
+     RowBox[{"\[ImaginaryI]", "*", "\[CurlyEpsilon]"}]}]]}], ";"}]}], "Input",\
+
+ CellChangeTimes->{{3.655110748844935*^9, 3.65511075014142*^9}, {
+  3.655110797215102*^9, 3.655111001806613*^9}, {3.655111156676133*^9, 
+  3.655111160748304*^9}, {3.656670536634021*^9, 3.656670560838871*^9}}],
+
+Cell[CellGroupData[{
+
+Cell["Poles of \[CapitalSigma]2 (p=0, \[Omega])", "Subsection",
+ CellChangeTimes->{{3.6551221535397587`*^9, 3.655122164315946*^9}}],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"w12", "[", 
+    RowBox[{"q1abs_", ",", " ", "q2abs_", ",", " ", "costheta_"}], "]"}], ":=",
+    " ", 
+   RowBox[{
+    FractionBox[
+     RowBox[{"-", 
+      RowBox[{"(", 
+       RowBox[{
+        SuperscriptBox["q2abs", "2"], "+", 
+        RowBox[{"2", "*", "q1abs", "*", "q2abs", "*", "costheta"}]}], ")"}]}],
+      "2"], "-", 
+    RowBox[{"wq", "[", "q2abs", "]"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"w13", "[", 
+    RowBox[{
+    "q1abs_", ",", " ", "q2abs_", ",", "\[Omega]_", ",", " ", "costheta_"}], 
+    " ", "]"}], ":=", " ", 
+   RowBox[{"\[Omega]", "-", 
+    FractionBox[
+     RowBox[{"(", 
+      RowBox[{
+       SuperscriptBox["q1abs", "2"], "+", 
+       SuperscriptBox["q2abs", "2"], "+", 
+       RowBox[{"2", "*", "q1abs", "*", "q2abs", "*", "costheta"}]}], ")"}], 
+     "2"], "+", "\[Mu]", "-", 
+    RowBox[{"wq", "[", "q1abs", "]"}], "-", 
+    RowBox[{"wq", "[", "q2abs", "]"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"w23", "[", 
+    RowBox[{"q1abs_", ",", "\[Omega]_"}], "]"}], ":=", " ", 
+   RowBox[{"\[Omega]", "-", 
+    FractionBox[
+     SuperscriptBox["q1abs", "2"], "2"], "+", "\[Mu]", "-", 
+    RowBox[{"wq", "[", "q1abs", "]"}]}]}], ";"}]}], "Input",
+ CellChangeTimes->{{3.655122172596949*^9, 3.6551225497698803`*^9}, 
+   3.655547732637389*^9}]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["DumpSave", "Section",
+ CellChangeTimes->{{3.654943030882015*^9, 3.654943037178986*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+  "SetDirectory", "[", 
+   "\"\</home/h/H.Guertner/theorie/BEC_Polaron/Mathematica/\>\"", "]"}], ";", 
+  
+  RowBox[{"DumpSave", "[", 
+   RowBox[{"\"\<params.mx\>\"", ",", " ", 
+    RowBox[{"{", 
+     RowBox[{
+     "g0", ",", "g0cos", ",", " ", "wq", ",", " ", "dq", ",", " ", "vq2", ",",
+       " ", "g0pw", ",", "g0pwcos", ",", " ", "dqw", ",", " ", "\[Alpha]", 
+      ",", " ", "\[Mu]", ",", " ", "mr", ",", " ", "px", ",", " ", "py", ",", 
+      " ", "pz", ",", " ", "tbeg", ",", " ", "qc", ",", " ", "paper", ",", 
+      "w12", ",", "w13", ",", "w23"}], "}"}]}], "]"}], ";"}]], "Input",
+ CellChangeTimes->{{3.654943041826076*^9, 3.6549430442436113`*^9}, {
+  3.654943077701089*^9, 3.654943207026618*^9}, {3.655110864817511*^9, 
+  3.655110865593095*^9}, {3.655110917690901*^9, 3.65511093195548*^9}, {
+  3.655122574162661*^9, 3.655122580010989*^9}}]
+}, Open  ]]
+}, Open  ]]
+},
+WindowSize->{958, 1144},
+WindowMargins->{{Automatic, 0}, {Automatic, 0}},
+FrontEndVersion->"10.3 for Linux x86 (64-bit) (October 9, 2015)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 98, 1, 66, "Chapter"],
+Cell[CellGroupData[{
+Cell[703, 27, 99, 1, 65, "Section"],
+Cell[805, 30, 931, 24, 165, "Input"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[1773, 59, 94, 1, 65, "Section"],
+Cell[1870, 62, 3822, 121, 573, "Input"],
+Cell[CellGroupData[{
+Cell[5717, 187, 131, 1, 45, "Subsection"],
+Cell[5851, 190, 1373, 40, 193, "Input"]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[7273, 236, 93, 1, 65, "Section"],
+Cell[7369, 239, 885, 18, 110, "Input"]
+}, Open  ]]
+}, Open  ]]
+}
+]
+*)
+
+(* End of internal cache information *)
