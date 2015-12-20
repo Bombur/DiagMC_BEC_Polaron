@@ -1,0 +1,66 @@
+{
+  "Momentum": 0.3,
+  "Q_Cutoff": 200,
+  "Chemical_Potential": -2.2,
+  "Alpha": 2,
+  "Impurity_Mass": 0.263158,
+  "FP_Omega": 1,
+  
+  "Tau_max" : 5,
+  "Tau_bin" : 100,
+  "Tau_start": 0.5,
+  "Max_Order": -1,
+  
+  "Order_Step_Size": 2,
+  "Norm_Points": 100000,
+  "End_Points":10000,
+  "Total_Time" : 7200,
+  
+  "Insert_Probability": 0.2,
+  "Remove_Probability": 0.1,
+  "Change_tau_Probability": 0.1,
+  "Change_tau_in_HO_Probability": 0.1,
+  "Swap_Probability": 0.3,
+  "DQ_Probability": 0.2,
+  "IAE_Probability": 0,
+  "RAE_Probability": 0,
+
+  "Correction_tau": 0.5,
+  "Correction_dq": 100,
+  "Insert_FP_DT": 1,
+  "Insert_FP_DQ": 3,
+  "Fake_Weight": 1.1,
+  "QSigma_Factor": 2,
+  
+  "Its_per_Measure": 1000,
+  "Its_per_Test": 10000000,
+  "Its_per_Write": 10000000,
+  "RunTime" : 500,
+  
+  "Machine": "",
+  "NCores": 8,
+  "Max_Order_List" : [],
+  "Alpha_List" : [],
+  "Tau_max_List" : [],
+  "Iterator": "Max_Order_List",
+  
+  "Froehlich_Polaron": true,
+  "BEC_Polaron":false,
+  
+  "Self_Energy": true,
+  "SECumul": true,
+  "MEASREWEIGHT":false,
+  "FOG0SE":false,
+  
+  "FP_Check": false,
+  "FP_6_ord_g0se": true,
+  "No_Check": false,
+  "QGauss": false,
+  
+  
+  "Path" : "/project/theorie/h/H.Guertner/BEC_Polaron/",
+  "Peter_Path" : "/project/theorie/h/H.Guertner/BEC_Polaron/peter",
+  "Cluster" : "FP_cluster_calcs/FP_SECUMUL"
+}
+
+
