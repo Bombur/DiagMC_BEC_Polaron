@@ -14,15 +14,10 @@ int DiagMC::measure(const int & ordstp) {
   }
   
 //To measure G0Se from full Diagram sampling we have to reweight the measurement
-//In case of else we have to reqeight in IO
+//In case of else we have to reweight in IO
   double corbefore = cor;
 #ifdef MEASREWEIGHT
   cor /= G0el(diag.get_p(0), diag.get_tau(), diag.get_tinit(2*diag.get_order()));
-  //std::cout << diag.get_p(0) << '\t' << diag.get_tau() << '\t' << diag.get_tinit(2*diag.get_order())<< '\t' << diag.get_order() <<std::endl;
-  //std::cout << G0el(diag.get_p(0), diag.get_tau(), diag.get_tinit(2*diag.get_order())) <<'\t' << exp(-E*(diag.get_tau()- diag.get_tinit(2*diag.get_order()))) <<  '\t' << cor << std::endl;
-  testg0p += cor;
-  count +=1.;
-  
 #endif
   
  //first order G0Se

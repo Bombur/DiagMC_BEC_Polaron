@@ -66,11 +66,7 @@ int Diagram::propose_insert(const double & dqins, const double & sigfac) {
 	pr_tau2.t = (drnd()*(pr_taufin - pr_tau1.t))+pr_tau1.t;							//tau2
 	pr_tau2.link = pr_arc+1;
 	
-	/*
-	pr_q[0] = sqrt(-2.*log(drnd()))*cos(2.*M_PI*drnd())/sqrt(pr_tau2.t-pr_tau1.t);		//qx
-	pr_q[1] = sqrt(-2.*log(drnd()))*sin(2.*M_PI*drnd())/sqrt(pr_tau2.t-pr_tau1.t);		//qy
-	pr_q[2] = sqrt(-2.*log(drnd()))*cos(2.*M_PI*drnd())/sqrt(pr_tau2.t-pr_tau1.t);		//qz
-	*/
+
 #ifdef QGAUSS
 	//Gauss q	
 	const double qr= (dqins/sigfac)*sqrt(-2.* log(drnd()));
@@ -287,10 +283,7 @@ void Diagram::remove() {
 #ifndef NCHECK
 	std::vector< std::array<double,3> >::iterator pit = phprop.begin() + pr_arc;
 	phprop.erase(pit, pit+2);
-/*
-	std::vector< arch >::iterator qsit = qs.begin() + arch_num();
-	qs.erase(qsit);
-	*/
+
 #endif
   
 	order-=1;

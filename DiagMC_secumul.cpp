@@ -1,17 +1,6 @@
 #include "DiagMC.h"
 #ifdef SECUMUL
 
-int DiagMC::check_ordstsz(const double & Timeperorderstep) {
-  if (Timeperorderstep > RunTime && ordstsz > 1) {
-	return ordstsz - 1;
-  }
-  if (Timeperorderstep < RunTime) {
-	return  ordstsz + 1;
-  }
-  return ordstsz;
-} 
-
-
 void DiagMC::ord_step() {
   minord = maxord; 
   maxord += ordstsz;
@@ -35,8 +24,8 @@ double DiagMC::endcalc() {
   return nends[ordstep];
 }
 
-std::vector<double> DiagMC::get_minmax() {
-  std::vector<double> tmp(2);
+std::array<double, 2> DiagMC::get_minmax() {
+  std::array<double, 2> tmp;
   tmp[0] = static_cast<double>(minord);
   tmp[1] = static_cast<double>(maxord);
   return tmp;

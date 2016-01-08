@@ -30,6 +30,7 @@
 #include "Diagram.h"
 #include "dvector.h"
 #include "mystructs.h"
+#include "tmap.h"
 
 #ifndef __DIAGMC_H_INCLUDED__
 #define __DIAGMC_H_INCLUDED__
@@ -38,11 +39,12 @@ namespace pt = boost::property_tree;
 using namespace Eigen;
 
 class DiagMC { 
-  private:
+  private: 
 	const double p, mu;			//mu and initial p 	
 	const double qc;
 	const double taumax;			//imaginary time cut off
 	const int taubin;			//bins für 0 bis tau
+	tmap taumap;
 	const double alpha; 					//coupling strength
 	const double relm; 		// mI/mB relative mass
 	double E;
@@ -85,18 +87,10 @@ class DiagMC {
 	
 	//io variables 
 	std::string path;
-	//std::ofstream Datafile;
-	//std::ofstream udsfile;			//update statistcs
-	//std::ofstream osfile;			//order statistics
-	//std::ofstream tsfile;			//time statistics
-	//long long Datafile_pos;
-	//long long uds_pos;
-	//long long os_pos;
-	//long long ts_pos;
 	
 	//test variables
 	double global_weight; 
-	std::string lu;				//last update
+	std::string lu;				//last update for error message
 	
   public: 
 	const double Prem, Pins, Pct, Pctho, Psw, Pdq, Piae, Prae;		//probabilities to choose remove or insert branch
@@ -112,15 +106,16 @@ class DiagMC {
 	const int normmin; // minimum number of points to do the next step
 	const int endmin; // minimum number of points to do the next step
 	const int TotRunTime; // Total Time
+	const int TotMaxOrd; // Total Maximum Order
 #ifdef SECUMUL
-	int check_ordstsz(const double & Timeperorderstep);
 	void set_ordstsz(const int & tmp) {ordstsz = tmp;};
+	int get_ordstsz() {return ordstsz;};
 	void ord_step();  // sets the minimum and maximum order for the next step
 	int get_order() {return diag.get_order();}
 	int get_max_order() {return maxord;}			//return current maximum order
 	double normcalc();  //Calculates how often we have been in the norm Diagram
 	double endcalc(); //Calculates how often we have been in the end Diagram
-	std::vector<double> get_minmax();
+	std::array<double, 2> get_minmax();
 	
 	//returning Data
 	double pref_calc();
@@ -153,12 +148,6 @@ class DiagMC {
 	void write();
 	void Stattofile(const ArrayXd &);
 	
-		
-	//void status();
-	//void updatestats(); 
-	//void orderstats();
-	//void timestats(const VectorXd &);
-	
 	//for multible cores
 	ArrayXXd get_Data();
 	ArrayXXd get_uds() {return updatestat;}
@@ -166,8 +155,6 @@ class DiagMC {
 	
 	 
 	//DiagMC_test.cpp
-	double testg0p;
-	double count;
 	void test(); 
 	double weight_calc();
 	void printall();

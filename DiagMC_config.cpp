@@ -6,14 +6,20 @@ DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>(
 										ctcor(config.get<double>("Correction_tau")),  qcor(config.get<double>("Correction_dq")),  dtins(config.get<double>("Insert_FP_DT")), dqins(config.get<double>("Insert_FP_DQ")), fw(config.get<double>("Fake_Weight")), sigfac(config.get<double>("QSigma_Factor")),
 										Prem(config.get<double>("Remove_Probability")), Pins(config.get<double>("Insert_Probability")), Pct(config.get<double>("Change_tau_Probability")), Pctho(config.get<double>("Change_tau_in_HO_Probability")), Psw(config.get<double>("Swap_Probability")), Pdq(config.get<double>("DQ_Probability")), Piae(config.get<double>("IAE_Probability")), Prae(config.get<double>("RAE_Probability")),
 										Meas_its(config.get<int>("Its_per_Measure")), Test_its(config.get<int>("Its_per_Test")), Write_its(config.get<int>("Its_per_Write")), RunTime(config.get<int>("RunTime")),
-										ordstsz(config.get<int>("Order_Step_Size")), normmin(config.get<int>("Norm_Points")), endmin(config.get<int>("End_Points")), TotRunTime(config.get<int>("Total_Time")) { 
+										ordstsz(config.get<int>("Order_Step_Size")), normmin(config.get<int>("Norm_Points")), endmin(config.get<int>("End_Points")), TotRunTime(config.get<int>("Total_Time")), TotMaxOrd(config.get<int>("Total_Max_Order")) { 
   try{
 	if (fabs(1-Prem-Pins-Pct -Pctho -Piae -Prae - Pdq-Psw) > 0.0000000001) {throw oor_Probs();}
 	
+	std::vector<std::function<double(int)>> fvec;
+	fvec.push_back(std::bind(mylin, _1, 5./200., 0., 0.));
+	fvec.push_back(std::bind(myexp, _1, 5./200., 100., 2.5));
+	fvec.push_back(std::bind(mylog, _1 , 0.29 , 200., 13.6825));
+	fvec.push_back(std::bind(mylin, _1, 0.007, 250., 14.8227));
+	
+	tmap testmap(fvec, as_vector<int>("Bins"), as_vector<double>("Taus"));
+	
 	E = pow(p,2.)/2. - mu;
 	G0p = (1.-exp(-E*taumax))/E;
-	testg0p =0.;
-	count = 0.;
 	
 #ifdef FP
 	wp = config.get<int>("FP_Omega");
@@ -54,16 +60,6 @@ DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>(
 	convert7<<seed;
 	path=config.get<std::string>("Path");
 	
-	//Datafile.open(path+"data/Data_p_"+convert.str()+"_mu_"+convert2.str()+"_tmax_"+convert3.str()+"_a_"+convert4.str()+"_wp_"+convert5.str()+"_Run_Time_"+convert6.str()+"_core_"+convert7.str()+".txt");
-	//udsfile.open(path+"data/udstat_p_"+convert.str()+"_mu_"+convert2.str()+"_tmax_"+convert3.str()+"_a_"+convert4.str()+"_wp_"+convert5.str()+"_Run_Time_"+convert6.str()+"_core_"+convert7.str()+".txt");
-	//osfile.open(path+"data/ostat_p_"+convert.str()+"_mu_"+convert2.str()+"_tmax_"+convert3.str()+"_a_"+convert4.str()+"_wp_"+convert5.str()+"_Run_Time_"+convert6.str()+"_core_"+convert7.str()+".txt");
-	//tsfile.open(path+"data/tstat_p_"+convert.str()+"_mu_"+convert2.str()+"_tmax_"+convert3.str()+"_a_"+convert4.str()+"_wp_"+convert5.str()+"_Run_Time_"+convert6.str()+"_core_"+convert7.str()+".txt");
-	//if (!(Datafile.is_open() && udsfile.is_open() && osfile.is_open() && tsfile.is_open())) {throw openwritefile();}
-	//Datafile_pos=Datafile.tellp();
-	//uds_pos=udsfile.tellp();
-	//os_pos=udsfile.tellp();
-	//ts_pos=udsfile.tellp();
-	
 	global_weight=exp(-E*config.get<double>("Tau_start"));
 	
 	lu = "nothing";
@@ -75,9 +71,6 @@ DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>(
 }
 
 DiagMC::~DiagMC() {
-  //Datafile.close();
-  //udsfile.close();
-  //osfile.close();
-  //tsfile.close();
+
 }
 

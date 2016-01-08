@@ -6,7 +6,9 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include "DiagMC.h"
+#include "Adaption.h"
 #include "RunException.h"
+#include <assert.h>
 
 #if defined(_OPENMP)
 #include <omp.h>
@@ -48,7 +50,10 @@ int main() {
 	std::vector<ArrayXXd> Ends;
 	std::vector<double> nnorms;
 	std::vector<double> nends;
-	std::vector<std::vector<double>> minmax;
+	std::vector<double> mins;
+	std::vector<double> maxs;
+	std::vector<double> stptime;
+	std::vector<double> bottlenecks;
 #endif
 	
 	//container for pointer to all parallel DiagMCs to reuse parallelism
@@ -77,18 +82,24 @@ int main() {
 	  ArrayXXd SEibtemp(config.get<int>("Tau_bin"),nseeds);
 	  ArrayXXd Normstemp(config.get<int>("Tau_bin"),nseeds);
 	  ArrayXXd Endstemp(config.get<int>("Tau_bin"),nseeds);
-	  int nnormstemp;
-	  int nendstemp;
-
+	  
 	  // -------------------- Order Step Loop----------------
 	  //order steps iterator
 	  int ordit =0;
 	  //Order Step Size adaption
 	  double ordstsz_calc=0.;
+	  
+	  //Total Max Order
+	  int TotMaxOrdcheck = -1;
+	  
 	  std::cout << "# Order Loop Starting! "<< std::endl;
 	  do{
 		std::cout <<'\n'<< "# ------ Order Step " << ordit << "------" <<'\n' << std::endl;
 		steady_clock::time_point Cumdt_be = steady_clock::now();
+		
+		 //temporary Containers to transfer Data
+		double nnormstemp = 0.;
+	  	double nendstemp = 0.;
 #endif
 		
 		
@@ -214,10 +225,6 @@ int main() {
 		  
 #ifndef SECUMUL
 		  if ( (it%bec->Write_its) ==0) {
-			//bec->write();
-			//bec->timestats(timestat/nseconds);
-		  	//bec->Stattofile(timestat/nseconds);
-			
 			//time 
 			steady_clock::time_point time_end = steady_clock::now();
 			nseconds = duration_cast<seconds>(time_end-time_begin).count();
@@ -246,7 +253,7 @@ int main() {
 		}
 	  }//end of omp for loop
 		
-#else	//-------------2n Part of Order Loop--------------------------
+#else	//-------------2nd Part of Order Loop--------------------------
 
 		  if ( (it%bec->Write_its) ==0) {
 			//time 
@@ -284,13 +291,13 @@ int main() {
 		  SEibtemp.col(seed) = bec->get_SEib();
 		  Normstemp.col(seed) = bec->get_NormDiag();
 		  Endstemp.col(seed) = bec->get_EndDiag();
-		  nnormstemp = bec->normcalc();
-		  nendstemp = bec->endcalc();
+		  nnormstemp += bec->normcalc();
+		  nendstemp += bec->endcalc();
 		  std::cout << "# Transfered Data thread " << seed << std::endl;
 		}
 		} //end of omp for loop
 		
-		//Not Paralell anymore
+		//Not Parallel anymore
 		//Combining Data
 		{
 		  SEib += SEibtemp;
@@ -302,11 +309,13 @@ int main() {
 			Norms[3]=Normstemp;
 			Ends[2]=Ends[3];
 			Ends[3]=Endstemp;
-		  }			
+		  }	
+		  nnormstemp /= static_cast<double>(nseeds);
+		  nendstemp /= static_cast<double>(nseeds);
 		  nnorms.push_back(nnormstemp);
 		  nends.push_back(nendstemp);
-		  minmax[0].push_back(DiagMC_pl[0]->get_minmax().at(0));
-		  minmax[1].push_back(DiagMC_pl[0]->get_minmax().at(1));
+		  mins.push_back((DiagMC_pl[0]->get_minmax())[0]);
+		  maxs.push_back((DiagMC_pl[0]->get_minmax())[1]);
 		  std::cout << "# Combined Data!" << std::endl;
 		}
 			
@@ -314,11 +323,40 @@ int main() {
 		steady_clock::time_point Cumdt_end = steady_clock::now();
 		Cumdt = duration_cast<seconds>(Cumdt_end-Cumdt_be).count();
 		
-		#pragma omp parallel for ordered schedule(static, 1)
-		for (int seed = 0; seed < nseeds; seed++)
-		{
-		  DiagMC_pl[seed]->ord_step();
+		//Save Step Time for Order Step
+		stptime.push_back(Cumdt);
+		
+		//Order Step Adaption
+		Adaption OSA(DiagMC_pl[0]->get_ordstsz(), Cumdt, nnormstemp, nendstemp, config);
+		bottlenecks.push_back(static_cast<double>(OSA.whichbtlnk()));
+		if (config.get<bool>("ADAPTION")){
+		  int tempordstsz = OSA.ordstszadapt();
+		  std::cout<< "#Adapted Order Step Size from " << DiagMC_pl[0]->get_ordstsz() << " to " << tempordstsz << '\n';
+		  for (auto i : DiagMC_pl) {
+			i->set_ordstsz(tempordstsz);
+		  }
 		}
+				
+	  //Check if we reached Total Maximum oder	
+	  	if ((DiagMC_pl[0]->TotMaxOrd == -1) || (DiagMC_pl[0]->TotMaxOrd > DiagMC_pl[0]->get_order() + DiagMC_pl[0]->get_ordstsz())) {
+		  #pragma omp parallel for ordered schedule(static, 1)
+		  for (int seed = 0; seed < nseeds; seed++)
+		  {
+			DiagMC_pl[seed]->ord_step();
+		  }
+		} else if (DiagMC_pl[0]->TotMaxOrd == DiagMC_pl[0]->get_order()) { // we reached TotMaxOrd
+		  TotMaxOrdcheck = ordit + 1;
+		} else { // we have to change the last order step to reach Tot Max Ord
+		  const int laststsz = DiagMC_pl[0]->TotMaxOrd - DiagMC_pl[0]->get_order();
+		  #pragma omp parallel for ordered schedule(static, 1)
+		  for (int seed = 0; seed < nseeds; seed++)
+		  {	
+			DiagMC_pl[seed]->set_ordstsz(laststsz);
+			DiagMC_pl[seed]->ord_step();
+		  }
+		  TotMaxOrdcheck = ordit + 2;
+		}
+		  
 		
 		ordit++;
 		
@@ -327,7 +365,7 @@ int main() {
 		
 		std::cout << "\n#Total Time " << Cumt << '\t' << "dt  " << Cumdt << '\n' << std::endl;
 		
-		} while (Cumt < DiagMC_pl[0]->TotRunTime - Cumdt);
+		} while ((Cumt < DiagMC_pl[0]->TotRunTime - Cumdt) && (TotMaxOrdcheck != ordit) );
 #endif
 	   
 	  
@@ -369,13 +407,13 @@ int main() {
 	ArrayXXd Norm_last(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
 	Norm_last << Data_tot[0].col(0), ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
 	for (int i =0; i < nseeds ; i++)
-	  Norm_last.col(1) += Norms[3].col(i);
+	  Norm_last.col(1) += Norms[Norms.size()-1].col(i);
 	Norm_last.col(1) /= static_cast<double>(nseeds);
 	
 	ArrayXXd End_last(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
 	End_last << Data_tot[0].col(0), ArrayXXd::Zero(Data_tot[0].rows(), 2);   //tau
 	for (int i =0; i < nseeds ; i++)
-	  End_last.col(1) += Ends[2].col(i);
+	  End_last.col(1) += Ends[Ends.size()-2].col(i);
 	End_last.col(1) /= static_cast<double>(nseeds);
 #else
 	ArrayXXd all_orders(Data_tot[0].rows(), 3);  // 0:tau, 1:average, 2:error
@@ -421,8 +459,8 @@ int main() {
 		all_orders.col(2) += (SEib.col(i)-all_orders.col(1)).pow(2); 
 		Norm_first.col(2) += (Norms[1].col(i)-Norm_first.col(1)).pow(2);
 		End_first.col(2) += (Ends[0].col(i)-End_first.col(1)).pow(2);
-		Norm_last.col(2) += (Norms[3].col(i)-Norm_last.col(1)).pow(2);
-		End_last.col(2) += (Ends[2].col(i)-End_last.col(1)).pow(2);
+		Norm_last.col(2) += (Norms[Norms.size() -1].col(i)-Norm_last.col(1)).pow(2);
+		End_last.col(2) += (Ends[Ends.size() -2].col(i)-End_last.col(1)).pow(2);
 #else
 		all_orders.col(2) += (Data_tot[i].col(1)-all_orders.col(1)).pow(2); 
 #endif
@@ -519,20 +557,20 @@ int main() {
 	ts_outfile.close();
 	
 #ifdef SECUMUL
-	ArrayXXd minmax_out(minmax[0].size(), 4);
-	minmax_out.col(0) = Map<const Array<double, 1, Dynamic> > (minmax[0].data(), minmax[0].size());
-	minmax_out.col(1) = Map<const Array<double, 1, Dynamic> > (minmax[1].data(), minmax[1].size());
-	minmax_out.col(2) = Map<const Array<double, 1, Dynamic> > (nnorms.data(), minmax[0].size());
-	minmax_out.col(3) = Map<const Array<double, 1, Dynamic> > (nends.data(), minmax[1].size());
+	ArrayXXd minmax_out(mins.size(), 6);
+	minmax_out.col(0) = Map<const Array<double, 1, Dynamic> > (mins.data(), mins.size());
+	minmax_out.col(1) = Map<const Array<double, 1, Dynamic> > (maxs.data(), maxs.size());
+	minmax_out.col(2) = Map<const Array<double, 1, Dynamic> > (nnorms.data(), nnorms.size());
+	minmax_out.col(3) = Map<const Array<double, 1, Dynamic> > (nends.data(), nends.size());
+	minmax_out.col(4) = Map<const Array<double, 1, Dynamic> > (stptime.data(), stptime.size());
+	minmax_out.col(5) = Map<const Array<double, 1, Dynamic> > (bottlenecks.data(), bottlenecks.size());
 	std::ofstream minmax_outfile("data/stats/minmax");
 	minmax_outfile << "Minimum Maximum Order Statistics" << '\n';
     minmax_outfile << "*************************************" << '\n';
-	minmax_outfile << "Min \t Max  \t nMin \t nMax \n" ;
+	minmax_outfile << "Min \t Max  \t nMin \t nMax \t time [s] \t Bottleneck \n" ;
 	minmax_outfile << minmax_out;
 	minmax_outfile.close();
 #endif	
-	
-	int rem=std::system("rm -f ./data/*_core_*");  //removing the data from each core
 	
 	const std::string anacommand = "python3 data_ana.py";
 	std::cout << "# Analysing data, result = " << system(anacommand.c_str()) << std::endl;

@@ -5,7 +5,7 @@ void DiagMC::test() {
 	
 	//SECUMUL
 #ifdef SECUMUL
-	if(ordstsz < 2) {throw ossoor();}
+	if(ordstsz < 1) {throw ossoor();}
 #endif
 	//Diagram
 	diag.test(qc); 
