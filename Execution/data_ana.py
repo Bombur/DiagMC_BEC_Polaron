@@ -164,7 +164,7 @@ if params["SECumul"] and params["Self_Energy"]:
 	tmp = "%i" %(minmax[1,0])
 	plt.plot(data[:, 0], data[:, 1], label=('Norm Diagram Order '+tmp))
 	data2 = np.loadtxt('data/secumul/End_first')
-	tmp = "%i" %(minmax[0,2])
+	tmp = "%i" %(minmax[0,1])
 	plt.plot(data2[:, 0], data2[:, 1], label='End Diagram Order ' +tmp)
 
 	plt.yscale(scale)
@@ -177,10 +177,10 @@ if params["SECumul"] and params["Self_Energy"]:
 	
 	#Compare last Norm and End Diagram 
 	data = np.loadtxt('data/secumul/Norm_last')
-	tmp = "%i" %(minmax[1,0])
+	tmp = "%i" %(minmax[-1,0])
 	plt.plot(data[:, 0], data[:, 1], label='Norm Diagram Order '+tmp)
 	data2 = np.loadtxt('data/secumul/End_last')
-	tmp = "%i" %(minmax[0,2])
+	tmp = "%i" %(minmax[-2,1])
 	plt.plot(data2[:, 0], data2[:, 1], label='End Diagram Order ' +tmp)
 
 	plt.yscale(scale)
@@ -203,9 +203,7 @@ if params["Self_Energy"]:
 		
 		#new all orders Green Function
 		data = np.loadtxt('data/FP_control/mat_FP_all_transform')
-		#interpoldata = np.loadtxt('data/FP_control/mat_FP_all_transform_interpol')
 		plt.plot(data[:, 0], data[:, 1], label='FP of SE Sampling Simpson')
-		#plt.plot(interpoldata[:, 0], interpoldata[:, 1], label='FP of SE Sampling Interpolation ')
 		peter = np.loadtxt(peter_loc+'/'+compare[2])
 		plt.plot(peter[:, 0], peter[:, 1], label=compare[2])
 	

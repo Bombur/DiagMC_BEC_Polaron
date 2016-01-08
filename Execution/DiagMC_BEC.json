@@ -11,11 +11,6 @@
   "Tau_start": 0.5,
   "Max_Order": -1,
   
-  "Order_Step_Size": 2,
-  "Norm_Points": 100000,
-  "End_Points":10000,
-  "Total_Time" : 7200,
-  
   "Insert_Probability": 0.2,
   "Remove_Probability": 0.1,
   "Change_tau_Probability": 0.1,
@@ -29,20 +24,29 @@
   "Correction_dq": 100,
   "Insert_FP_DT": 1,
   "Insert_FP_DQ": 3,
-  "Fake_Weight": 1.1,
+  "Fake_Weight": 1,
   "QSigma_Factor": 2,
   
   "Its_per_Measure": 1000,
-  "Its_per_Test": 10000000,
-  "Its_per_Write": 10000000,
-  "RunTime" : 500,
+  "Its_per_Test": 100000000,
+  "Its_per_Write": 100000000,
+  "RunTime" : 1500,
+  
+  "Order_Step_Size": 2,
+  "Norm_Points": 5000,
+  "End_Points": 5000,
+  "Total_Time" : 36000,
+  "Total_Max_Order" : -1,
   
   "Machine": "",
   "NCores": 8,
   "Max_Order_List" : [],
+  "Total_Max_Order_List": [-1, 20, 40],
   "Alpha_List" : [],
   "Tau_max_List" : [],
-  "Iterator": "Max_Order_List",
+  "Iterator": "Total_Max_Order_List",
+  
+  "ADAPTION": true,
   
   "Froehlich_Polaron": true,
   "BEC_Polaron":false,
@@ -52,7 +56,7 @@
   "MEASREWEIGHT":false,
   "FOG0SE":false,
   
-  "FP_Check": false,
+  "FP_Check": true,
   "FP_6_ord_g0se": true,
   "No_Check": false,
   "QGauss": false,
@@ -60,7 +64,11 @@
   
   "Path" : "/project/theorie/h/H.Guertner/BEC_Polaron/",
   "Peter_Path" : "/project/theorie/h/H.Guertner/BEC_Polaron/peter",
-  "Cluster" : "FP_cluster_calcs/FP_SECUMUL"
+  "Cluster" : "FP_cluster_calcs/FP_SECUMUL_ADAPT",
+  
+  "Bins": [0, 200],
+  "Taus": [0, 5],
+  "Functions": [
 }
 
 
