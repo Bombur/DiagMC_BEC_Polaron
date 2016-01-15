@@ -148,18 +148,6 @@ std::ostream& operator<<(std::ostream& os, const vecvecT & vec) {
 }
 
 
-//To read in a vector from a property tree
-namespace pt = boost::property_tree;
-
-template <typename T>
-std::vector<T> as_vector(const pt & ptree, const pt::key_type & key)
-{
-    std::vector<T> r;
-    for (const auto & item : pt.get_child(key))
-        r.push_back(item.second.get_value<T>());
-    return r;
-}
-
 
 #endif
 

@@ -8,11 +8,10 @@ void DiagMC::ord_step() {
   nends.push_back(0);
   ordstep += 1;
   
-  SEib= ArrayXd::Zero(taubin);
-  Norms = ArrayXd::Zero(taubin);
-  Ends = ArrayXd::Zero(taubin);
+  SEib= ArrayXd::Zero(taumap.taubin);
+  Norms = ArrayXd::Zero(taumap.taubin);
+  Ends = ArrayXd::Zero(taumap.taubin);
 }
-
 
 double DiagMC::normcalc() {
   nnorms[ordstep] = Norms.sum();
@@ -22,6 +21,12 @@ double DiagMC::normcalc() {
 double DiagMC::endcalc() {
   nends[ordstep] = Ends.sum();
   return nends[ordstep];
+}
+
+void DiagMC::set_av_nei(const double & av_normi, const double & av_endi, const int & ordit){
+  assert(ordit == ordstep);
+  nnorms[ordstep] = av_normi;
+  nends[ordstep] = av_endi;
 }
 
 std::array<double, 2> DiagMC::get_minmax() {
@@ -37,7 +42,7 @@ double DiagMC::pref_calc(){
 	pref *= nends[i];
 	pref /= nnorms[i+1];
   }
-  return pref * static_cast<double>(taubin)/taumax/nnorms[0];
+  return pref * static_cast<double>(taumap.taubin)/taumap.taumax/nnorms[0];
 }
   
 

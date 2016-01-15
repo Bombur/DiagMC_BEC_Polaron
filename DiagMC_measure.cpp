@@ -10,7 +10,7 @@ int DiagMC::measure(const int & ordstp) {
   }
   //zero order (fake check)
   if (diag.get_order() == 0) {
-	Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 1) += cor;
+	Data(taumap.bin(diag.get_tau()), 1) += cor;
   }
   
 //To measure G0Se from full Diagram sampling we have to reweight the measurement
@@ -24,9 +24,9 @@ int DiagMC::measure(const int & ordstp) {
   if (diag.get_order() == 1) {
 //Measure either G0SE or G0SEG0
 #ifdef FOG0SE
-	Data((int)(diag.get_tinit(2)/taumax*static_cast<double>(taubin)), 2) += cor;
+	Data(taumap.bin(diag.get_tau()), 2) += cor;
 #else
-	Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 2) += corbefore;
+	Data(taumap.bin(diag.get_tau()), 2) += corbefore;
 #endif
   }
   
@@ -34,46 +34,53 @@ int DiagMC::measure(const int & ordstp) {
   if (diag.get_order() == 2)  {
 	if (vsq(diag.get_p(1)-diag.get_p(3)) < 0.00000000000001){
 	  //Diagram 2a
-	  Data((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin)), 3) += cor;
+	  Data(taumap.bin(diag.get_tinit(4)), 3) += cor;
 	} else {
 	  //Diagram 2b
-	  Data((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin)), 4) += cor;
+	  Data(taumap.bin(diag.get_tinit(4)), 4) += cor;
 	}
   }
   
+  
+
 #ifndef SECUMUL
   //all G0SE
   if (diag.get_order() > 1 ){
-	Data((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin)), 0) += cor;
+	Data(taumap.bin(diag.get_tinit(2*diag.get_order())), 0) += cor;
   }
   
 #else //if it's cumulative we do not need to measure all diagrams at once
     //Norm Diagram
-  if (diag.get_order() == minord) {
-	Norms((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin))) += cor;
-  }
-  
-  //End Diagram
-  if (diag.get_order() == maxord) {
-	Ends((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin))) += cor;
-  }
-  
-  //Inbetween Diagram
-  if (diag.get_order()>1){
-	if (diag.get_order() > minord && diag.get_order() <= maxord) {
-	  SEib((int)(diag.get_tinit(2*diag.get_order())/taumax*static_cast<double>(taubin))) += cor;
+	double tau;
+	if (diag.get_order() > 1) {
+	  tau = diag.get_tinit(2*diag.get_order());
+	  //Inbetween Diagram
+	  if (diag.get_order() > minord && diag.get_order() <= maxord) {
+		SEib(taumap.bin(diag.get_tinit(2*diag.get_order()))) += cor;
+	  }
+	} else {
+	  tau = diag.get_tau();
 	}
-  }
+	
+	if (diag.get_order() == minord) {
+	  Norms(taumap.bin(tau)) += cor;
+	}
+  
+	//End Diagram
+	if (diag.get_order() == maxord) {
+	  Ends(taumap.bin(tau)) += cor;
+	}
 #endif
+
   
 #else
-  Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 0) += cor;
-  if (diag.get_order() < 2) {Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), diag.get_order()+1) += cor;}
+  Data(taumap.bin(diag.get_tau()), 0) += cor;
+  if (diag.get_order() < 2) {Data(taumap.bin(diag.get_tau()), diag.get_order()+1) += cor;}
   if (diag.get_order() ==2){
 	if(vsq(diag.get_q(2)) < 0.00000000000001) {
-	  Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 3) += cor;
+	  Data(taumap.bin(diag.get_tau()), 3) += cor;
 	}
-	Data((int)(diag.get_tau()/taumax*static_cast<double>(taubin)), 4) += cor;
+	Data(taumap.bin(diag.get_tau()), 4) += cor;
   }
 #endif
 

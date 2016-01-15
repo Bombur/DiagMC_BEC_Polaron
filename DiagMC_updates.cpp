@@ -11,7 +11,7 @@ int DiagMC::change_tau() {
   //if (diag.get_order() != 0 || ntau<diag.get_tinit(2*diag.get_order()-1)) {return -1;}
 
     
-  if (ntau < taumax) {
+  if (ntau < taumap.taumax) {
 	if (diag.set_tau(ntau) == 0) {
 	  updatestat(0,1) +=1;						//possible
 	  updatestat(0,3) +=1;						//accepted
@@ -27,7 +27,7 @@ int DiagMC::change_tau() {
 int DiagMC::ct(){
   lu = "ct()";
   updatestat(7,0) +=1;		//attempted
-  int which = diag.propose_ct(taumax, ctcor);
+  int which = diag.propose_ct(taumap.taumax, ctcor);
   double weight = 0.;
   if(which == 0) {
 	weight = G0el(diag.pr_p, diag.pr_taufin, diag.pr_tauin); //G0 (new) 
@@ -77,9 +77,8 @@ int DiagMC::insert() {
   weight /= G0el(diag.get_p(diag.pr_arc), diag.pr_tau2.t, diag.pr_tau1.t);	//G0(old)
   weight *= Dph(diag.pr_q, diag.pr_tau2.t, diag.pr_tau1.t);	//Phonon(new)
   weight *= Vq2(diag.pr_q);
-  weight /= pow((2.*M_PI), 3);
-  
   double weight_diff = weight;
+  weight /= pow((2.*M_PI), 3);
     
   // a priori part
   
@@ -139,9 +138,10 @@ int DiagMC::remove() {
   weight /= G0el(diag.get_p(diag.pr_arc), diag.pr_tau2.t, diag.pr_tau1.t);	//G0(old)
   weight /= Dph(q, diag.pr_tau2.t, diag.pr_tau1.t);				  //Phonon(old)
   weight /= Vq2(q);
+  double weight_diff = weight;
   weight *= pow((2.*M_PI), 3);
 
-  double weight_diff = weight;
+
 
   // a priori part
   
@@ -304,7 +304,7 @@ int DiagMC::insatend(){
   lu = "insatend()";
   updatestat(9,0) +=1;		//attempted
   if (diag.get_order() > maxord-1 && maxord != -1) {return -1;}
-  if(diag.propose_insatend(taumax, dtins, dqins)!=0) {return -1;}
+  if(diag.propose_insatend(taumap.taumax, dtins, dqins)!=0) {return -1;}
   updatestat(9,1) +=1;		//possible
 
   // weight part	
@@ -312,9 +312,8 @@ int DiagMC::insatend(){
   weight *= G0el(diag.pr_p, diag.pr_tau1.t, diag.pr_tauin);	//G0(new) 
   weight *= Dph(diag.pr_q, diag.pr_tau1.t, diag.pr_tauin);	//Phonon(new)
   weight *= Vq2(diag.pr_q);
-  weight /= pow((2.*M_PI), 3);
-  
   double weight_diff = weight;
+  weight /= pow((2.*M_PI), 3);
     
   // a priori part
   if (diag.get_order() == 0) {weight /= fw;}   // for fake function
@@ -351,8 +350,8 @@ int DiagMC::rematend() {
   weight /= G0el(diag.get_p(diag.pr_arc+1), diag.pr_tau2.t, diag.pr_tau1.t);	//G0(old)
   weight /= Dph(q, diag.pr_tau1.t, diag.pr_tauin);				  //Phonon(old)
   weight /= Vq2(q);
-  weight *= pow((2.*M_PI), 3);
   double weight_diff = weight;
+  weight *= pow((2.*M_PI), 3);
 
   // a priori part
   if (diag.get_order() == 1) {weight *= fw;}   // for fake function

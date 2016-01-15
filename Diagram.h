@@ -52,7 +52,7 @@ class Diagram {
 	std::array<double,3> get_q(const int & arc) {return phprop[arc];}
 	std::array<double,3> get_p(const int & arc) {return elprop[arc];}
 	
-	 
+	  
 	//proposing pr_ 
 	int pr_arc;
 	double pr_tauin, pr_taufin;

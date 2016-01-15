@@ -7,6 +7,7 @@
  
 //exception
 #include "DiagMCException.h"
+#include <assert.h>
 
 //io 
 #include <iostream>
@@ -42,9 +43,7 @@ class DiagMC {
   private: 
 	const double p, mu;			//mu and initial p 	
 	const double qc;
-	const double taumax;			//imaginary time cut off
-	const int taubin;			//bins für 0 bis tau
-	tmap taumap;
+	tmap taumap;		//taubin and taumax are in here
 	const double alpha; 					//coupling strength
 	const double relm; 		// mI/mB relative mass
 	double E;
@@ -94,7 +93,7 @@ class DiagMC {
 	
   public: 
 	const double Prem, Pins, Pct, Pctho, Psw, Pdq, Piae, Prae;		//probabilities to choose remove or insert branch
-	
+	  
 	//Random Function
 	std::function<double()> drnd;
 	
@@ -115,6 +114,7 @@ class DiagMC {
 	int get_max_order() {return maxord;}			//return current maximum order
 	double normcalc();  //Calculates how often we have been in the norm Diagram
 	double endcalc(); //Calculates how often we have been in the end Diagram
+	void set_av_nei(const double & av_normi, const double & av_endi, const int & ordit); //Sets the averaged number of all threads to the Norm/End of step ordit
 	std::array<double, 2> get_minmax();
 	
 	//returning Data

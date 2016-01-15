@@ -8,6 +8,7 @@
 #include "DiagMC.h"
 #include "Adaption.h"
 #include "RunException.h"
+#include "tmap.h"
 #include <assert.h>
 
 #if defined(_OPENMP)
@@ -43,19 +44,6 @@ int main() {
 	double onecore_time= 0;
   
 	
-#ifdef SECUMUL
-	//Statistics and Data for SECUMUL
-	ArrayXXd SEib = ArrayXXd::Zero(config.get<int>("Tau_bin"),nseeds);
-	std::vector<ArrayXXd> Norms;
-	std::vector<ArrayXXd> Ends;
-	std::vector<double> nnorms;
-	std::vector<double> nends;
-	std::vector<double> mins;
-	std::vector<double> maxs;
-	std::vector<double> stptime;
-	std::vector<double> bottlenecks;
-#endif
-	
 	//container for pointer to all parallel DiagMCs to reuse parallelism
 	std::vector<DiagMC *> DiagMC_pl(nseeds); 
 	
@@ -72,6 +60,18 @@ int main() {
 	}
 	  
 #ifdef SECUMUL
+	  //Statistics and Data for SECUMUL
+	  std::vector<int> bintemp = as_vector<int>(config, "Bins");
+	  ArrayXXd SEib = ArrayXXd::Zero(bintemp[bintemp.size()-1],nseeds);
+	  std::vector<ArrayXXd> Norms;
+	  std::vector<ArrayXXd> Ends;
+	  std::vector<double> nnorms;
+	  std::vector<double> nends;
+	  std::vector<double> mins;
+	  std::vector<double> maxs;
+	  std::vector<double> stptime;
+	  std::vector<double> bottlenecks;
+
 	  	//Total time Control
 	  steady_clock::time_point Cumt_be = steady_clock::now();  //start time
 	  steady_clock::time_point Cumdt_be;
@@ -79,9 +79,9 @@ int main() {
 	  double Cumdt= 0.;
 	  
 	  //temporary Containers to transfer Data
-	  ArrayXXd SEibtemp(config.get<int>("Tau_bin"),nseeds);
-	  ArrayXXd Normstemp(config.get<int>("Tau_bin"),nseeds);
-	  ArrayXXd Endstemp(config.get<int>("Tau_bin"),nseeds);
+	  ArrayXXd SEibtemp(bintemp[bintemp.size()-1],nseeds);
+	  ArrayXXd Normstemp(bintemp[bintemp.size()-1],nseeds);
+	  ArrayXXd Endstemp(bintemp[bintemp.size()-1],nseeds);
 	  
 	  // -------------------- Order Step Loop----------------
 	  //order steps iterator
@@ -126,6 +126,7 @@ int main() {
 		bool maxordcheck = false;
 		bool normcheck = false;
 		bool endcheck = false;
+		double Tott_check=0.;
 #endif
 		
 		do {
@@ -266,6 +267,10 @@ int main() {
 			dt_be = steady_clock::now();
 			if (bec->normcalc() > bec->normmin-1) {normcheck = true;} // checking if we reached the norm minimum
 			if (bec->endcalc() > bec->endmin-1) {endcheck = true;} // checking if we reached the end minimum
+
+			//To check Total Run Time
+			steady_clock::time_point Tott_check_end = steady_clock::now();
+			Tott_check = duration_cast<seconds>(Tott_check_end-Cumt_be).count();
 		  }	
 		  it++;
 			
@@ -275,7 +280,7 @@ int main() {
 			if(bec->get_order()== bec->get_max_order()) {maxordcheck = true;}
 		  }
 		  
-		} while ((nseconds < bec->RunTime - dt || !(normcheck) || !(endcheck) ||!(maxordcheck)) && nseconds < bec->TotRunTime - dt);
+		} while ((nseconds < bec->RunTime - dt || !(normcheck) || !(endcheck) ||!(maxordcheck)) && (Tott_check < bec->TotRunTime - dt));
 		
 		
 		#pragma omp critical  // to have the same staring point
@@ -301,7 +306,17 @@ int main() {
 		//Combining Data
 		{
 		  SEib += SEibtemp;
-		  if (ordit < 4) {
+		  
+		  //To be able to always print a Norm End comparison 
+		  if (ordit == 0) {
+			Norms.push_back(Normstemp);
+			Norms.push_back(Normstemp);
+			Ends.push_back(Endstemp);
+			Ends.push_back(Endstemp);
+		  } else if (ordit == 1) {
+			Norms[1] = Normstemp;
+			Ends[1] = Endstemp;
+		  } else if (ordit == 2 || ordit==3){
 			Norms.push_back(Normstemp);
 			Ends.push_back(Endstemp);
 		  } else {
@@ -342,15 +357,18 @@ int main() {
 		  #pragma omp parallel for ordered schedule(static, 1)
 		  for (int seed = 0; seed < nseeds; seed++)
 		  {
+			DiagMC_pl[seed]->set_av_nei(nnormstemp, nendstemp, ordit);
 			DiagMC_pl[seed]->ord_step();
 		  }
 		} else if (DiagMC_pl[0]->TotMaxOrd == DiagMC_pl[0]->get_order()) { // we reached TotMaxOrd
 		  TotMaxOrdcheck = ordit + 1;
 		} else { // we have to change the last order step to reach Tot Max Ord
 		  const int laststsz = DiagMC_pl[0]->TotMaxOrd - DiagMC_pl[0]->get_order();
+		  std::cout<<"#Last Step! Step Size changed to " << laststsz << std::endl;
 		  #pragma omp parallel for ordered schedule(static, 1)
 		  for (int seed = 0; seed < nseeds; seed++)
 		  {	
+			DiagMC_pl[seed]->set_av_nei(nnormstemp, nendstemp, ordit);
 			DiagMC_pl[seed]->set_ordstsz(laststsz);
 			DiagMC_pl[seed]->ord_step();
 		  }

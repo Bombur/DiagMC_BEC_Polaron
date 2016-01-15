@@ -12,12 +12,12 @@ void DiagMC::test() {
 	if (diag.get_order() > maxord && maxord != -1) {throw maxoerr();}
 	
 	//tau
-	if (diag.get_tau() > taumax || diag.get_tau() < 0) {throw oor_tau();}
+	if (diag.get_tau() > taumap.taumax || diag.get_tau() < 0) {throw oor_tau();}
 	
 	//Weight Check
-	//if (Data((int)(drnd()*taubin), 0) == 0) {throw data_empty();}
+	//if (Data((int)(drnd()*taumap.taubin), 0) == 0) {throw data_empty();}
 	double CG0p = 0;
-	for (int i=0; i< taubin; i++) {
+	for (int i=0; i< taumap.taubin; i++) {
 #ifdef SELFENERGY
 #ifndef SECUMUL
 	  if (Data(i, 0) + 0.0000001<  Data(i,3)+ Data(i, 4)) {
@@ -32,9 +32,13 @@ void DiagMC::test() {
 	  CG0p += Data(i, 1);	  
 	}
 	double weight_diff = fabs(weight_calc() - global_weight);
-	if (weight_diff > (0.0000001*global_weight)) {
-	  std::cout << weight_diff << '\t' << weight_calc() << '\t' << global_weight << std::endl;  
-	  throw weight_check();
+	if (weight_diff > (0.0000001*global_weight)){
+	  std::cerr << weight_diff << '\t' << weight_calc() << '\t' << global_weight << std::endl;  
+	  if (weight_diff > 1.0e-250) {
+		throw weight_check();
+	  } else {
+		std::cerr << "Warning! Weight Check would fail in double limits!" <<std::endl;
+	  }
 	}
 
 	//Statistics
@@ -45,7 +49,7 @@ void DiagMC::test() {
 	
   }
   catch (std::exception& e){
-	std::cout << lu <<std::endl;
+	std::cerr << lu <<std::endl;
 	std::cerr << e.what() << std::endl;
 	exit(EXIT_FAILURE);
   }
@@ -60,7 +64,7 @@ double DiagMC::weight_calc() {
 	  std::array<double, 3> q = diag.get_p(i-1)-diag.get_p(i);
 	  weight *= Dph(q, diag.get_tinit(diag.get_link(i)), diag.get_tinit(i));	//Dph
 	  weight *= Vq2(q);			//
-	  weight /= pow(2*M_PI,3);
+	  //weight /= pow(2*M_PI,3);
 	}
   }
   
@@ -73,8 +77,8 @@ void DiagMC::printall(){
   
   std::cout << p <<'\t'<< mu <<'\n';
   std::cout << qc <<'\n';
-  std::cout << taumax <<'\n';
-  std::cout << taubin <<'\n';
+  std::cout << taumap.taumax <<'\n';
+  std::cout << taumap.taubin <<'\n';
   std::cout << alpha <<'\n';
   std::cout << relm <<'\n';
   std::cout << E <<'\n';
@@ -114,7 +118,7 @@ void DiagMC::printall(){
   
 /*  
    int CG0p = 0;
-  for (int i=0; i< taubin; i++) {
+  for (int i=0; i< taumap.taubin; i++) {
 	CG0p += Data(i, 1);
 	std::cout  << Data(i,1) <<'\n';
   }
