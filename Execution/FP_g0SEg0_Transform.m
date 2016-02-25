@@ -1,7 +1,7 @@
 (* ::Package:: *)
 
 (* ::Title:: *)
-(*FP Transformation of G0SE*)
+(*BEC Transformation of G0SEG0*)
 
 
 (* ::Chapter:: *)
@@ -13,6 +13,7 @@ SetDirectory["/project/theorie/h/H.Guertner/BEC_Polaron/Mathematica/"];
 ResetDirectory[];
 p =Import["DiagMC_BEC.json", {"Data", "Momentum"} ];
 \[Mu] = Import["DiagMC_BEC.json", {"Data", "Chemical_Potential"} ];
+Bins = Import["DiagMC_BEC.json", {"Data", "Bins"}]
 peter=Import["/home/h/H.Guertner/theorie/BEC_Polaron/peter/FP_all", "Table"];
 peter = Insert [peter, {0,1,0}, 1];
 peter1=Import["/home/h/H.Guertner/theorie/BEC_Polaron/peter/FP_1", "Table"];
@@ -21,14 +22,6 @@ data=Import["data/all_orders", "Table"];
 data = Insert [data, {0,1,0}, 1];
 data1= Import["data/first_order", "Table"];
 data1 = Insert [data1, {0,0,0}, 1];
-(*
-data1g0se= Import["/home/h/H.Guertner/theorie/BEC_Polaron/FP_cluster_calcs/FP_fog0se/Max_Order_-1/data/first_order", "Table"];
-data1g0se = Insert [data1g0se, {0,0,0}, 1];*)
-
-
-(*
-ListPlot[{data1g0se[[All,1;;2]]}, PlotRange\[Rule]Full]
-ListPlot[{data[[All,1;;2]], peter[[All,1;;2]]}, PlotRange\[Rule]Full]*)
 
 
 (* ::Chapter:: *)
@@ -42,10 +35,6 @@ ListPlot[{data[[All,1;;2]], peter[[All,1;;2]]}, PlotRange\[Rule]Full]*)
 interpolg0seg01 = Interpolation[data1[[All,1;;2]]];
 interpolg0seg01w[w_]:= NIntegrate[interpolg0seg01[t]*Exp[I*w*t], {t, 0, 5}];
 interpolg0se1w[w_]:=-interpolg0seg01w[w]/g0pw[p,I w,0];
-
-
-(*interpolg0se1bla = Interpolation[data1g0se[[All,1;;2]]];
-interpolg0se1wbla[w_]:= NIntegrate[interpolg0se1bla[t]*Exp[I*w*t], {t, 0, 4.99}];*)
 
 
 (* ::Section:: *)

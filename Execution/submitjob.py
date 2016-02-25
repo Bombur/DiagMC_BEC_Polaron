@@ -28,10 +28,15 @@ if par["Self_Energy"]:
 	options2 += "-DSELFENERGY "
 if par["SECumul"]:
 	options2 += "-DSECUMUL "
+if par["SIGMA"]:
+	options2 += "-DSIGMA "
 if par["MEASREWEIGHT"]:
 	options2 += "-DMEASREWEIGHT "
 if par["FOG0SE"]:
 	options2 += "-DFOG0SE "
+if par["No_Check"]:
+	options2 += "-DNCHECK -DNDEBUG "	
+
 
 #recompile code
 os.chdir("src")
@@ -53,16 +58,16 @@ execute_loc= os.getcwd()
 #submission file 
 name = "BEC"
 if par["SECumul"] and par["Self_Energy"]:
-	time_cluster = round(par['Total_Time']/60) + 3
+	time_cluster = round(par['Total_Time']/3600) + 2
 else:
-	time_cluster = round(par['RunTime']/60) + 3
+	time_cluster = round(par['RunTime']/3600) + 1
 machine = par['Machine']
 constant_part = "#$ -l s_rt="+str(time_cluster)+":00:00\
-\n#$ -l h_vmem=" + str(2*(ncores+1)) + "00M\
+\n#$ -l h_vmem=" + str(5*(ncores+1)) + "00M\
 \n#$ -M h.guertner@physik.uni-muenchen.de\
 \n#$ -m bea\
 \n#$ -R y\
-\n#$ -l h_stack=200M\
+\n#$ -l h_stack=50M\
 \n#$ -pe PE "+str(ncores)+"\
 \nexport OMP_NUM_THREADS="+str(ncores)+"\
 \nmodule load mathematica \n"
@@ -71,7 +76,7 @@ if machine != "":
     
 #creating all folders
 iterator = [par[par["Iterator"]]]
-variable = [par["Iterator"].rstrip("_List")]
+variable = [par["Iterator"][:-5]]
 #6th order check for FP in SE sampling
 if par["Froehlich_Polaron"] and par["Self_Energy"] and par["FP_6_ord_g0se"]:
 	if par["SECumul"]:
@@ -95,6 +100,8 @@ for mtoi in range(len(iterator)):
 			os.makedirs(current_loc +"/data")
 		if not os.path.exists(current_loc +"/data/stats"):
 			os.makedirs(current_loc +"/data/stats")
+		if not os.path.exists(current_loc +"/data/Ep"):
+			os.makedirs(current_loc +"/data/Ep")
 		if par["SECumul"]:
 			if not os.path.exists(current_loc +"/data/secumul"):
 				os.makedirs(current_loc +"/data/secumul")
@@ -112,8 +119,11 @@ for mtoi in range(len(iterator)):
 			shutil.copy(build_loc + '/FP_g0SEg0_Transform.m', os.curdir)
 		
 		#update json file
+		if par["FP_6_ord_g0se"] and (variable[mtoi] == "Total_Max_Order") and (i == 6) :
+		 	par["Alpha"] = 2
 		par["Path"] = current_loc
-		par[variable[mtoi]]=i
+		par[variable[mtoi]]=i 
+		par["Ws_for_Epol"] = [(par["Chemical_Potential"] + j) for j in [-2,-1,0,1,2,3,4,5]]
 		jsonFile = open("DiagMC_BEC.json", "w+")
 		jsonFile.write(json.dumps(par))
 		jsonFile.close()
