@@ -8,7 +8,6 @@ DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>(
 										Meas_its(config.get<int>("Its_per_Measure")), Test_its(config.get<int>("Its_per_Test")), Write_its(config.get<int>("Its_per_Write")), RunTime(config.get<int>("RunTime")),
 										ordstsz(config.get<int>("Order_Step_Size")), normmin(config.get<int>("Norm_Points")), endmin(config.get<int>("End_Points")), TotRunTime(config.get<int>("Total_Time")), TotMaxOrd(config.get<int>("Total_Max_Order")),
 										taumap(tmap(create_fvec(config, "Functions"), as_vector<int>(config, "Bins"), as_vector<double>(config, "Taus")))
-	
 { 
   try{
 	if (fabs(1-Prem-Pins-Pct -Pctho -Piae -Prae - Pdq-Psw) > 0.0000000001) {throw oor_Probs();}
@@ -29,7 +28,11 @@ DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>(
 	
 	diag.set(p, config.get<double>("Tau_start"), drnd);
 	
-	
+	//Estimator
+	std::vector<double> wstmp = as_vector<double>(config, "Ws_for_Epol");
+	ws = Map<const Array<double, 1, Dynamic> > (wstmp.data(), wstmp.size());
+	Epol = ArrayXXd::Zero(taumap.taubin, ws.size());	
+
 	//Cumulative SE Calculation
 	minord = 0;
 	ordstep = 0;
@@ -47,7 +50,8 @@ DiagMC::DiagMC(const int & seed, const pt::ptree & config):p(config.get<double>(
 #endif
   
 	updatestat = ArrayXXd::Zero(11,6);
-	orderstat = ArrayXi::Zero(40);
+	orderstat = ArrayXd::Zero(config.get<int>("Order_Stat_Size"));
+	qstat = ArrayXd::Zero(config.get<int>("QStat_Size"));
   
 	std::stringstream convert, convert2, convert3, convert4, convert5, convert6, convert7; //p, mu, taumap.taumax, alpha, wp, RunTime
 	convert<<p;

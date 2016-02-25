@@ -1,8 +1,8 @@
-//config
+ //config
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
-
-//system
+  
+//system 
 #include <cstdlib>
  
 //exception
@@ -35,14 +35,14 @@
 
 #ifndef __DIAGMC_H_INCLUDED__
 #define __DIAGMC_H_INCLUDED__
-
+ 
 namespace pt = boost::property_tree;
-using namespace Eigen;
+using namespace Eigen; 
 
 class DiagMC { 
   private: 
 	const double p, mu;			//mu and initial p 	
-	const double qc;
+	const double qc;	//Q cut off
 	tmap taumap;		//taubin and taumax are in here
 	const double alpha; 					//coupling strength
 	const double relm; 		// mI/mB relative mass
@@ -53,14 +53,20 @@ class DiagMC {
 #else
 	int maxord;
 #endif 
-	
+
 #ifdef FP  
 	double wp; //Froehlich Polaron Omega
 #endif
-  
+ 
 	//Calculation variables
 	ArrayXXd Data;					//0:G(p,tau_i), 1:G0(p,tau_i), 2:G1(p,tau_i), 3:G2(p,tau_i)
 	Diagram diag;
+	
+	//Estimator
+	ArrayXd ws;		    	//different  omegas
+	ArrayXXd Epol; 			//Polaron Energy
+
+	//Parameter
 	const double ctcor;		//maximum correction in ctho
 	const double qcor;		//maximum correction in dq
 	const double dtins;			// for insert at end
@@ -82,8 +88,9 @@ class DiagMC {
 			
 	//rows of stats: 0:change tau, 1:insert, 2:remove 3:swap, 4:swapoocc, 5:swapoc, 6:swapco, 7:ct_ho, 8:dq , 9:insatend, 10: rematend
 	ArrayXXd  updatestat; 		//0:attempted, 1:possible, 2:rejected, 3:accepted, 4:acceptance ratio possible, 5:acceptance ratio total
-	ArrayXi orderstat;
-	
+	ArrayXd orderstat;
+	ArrayXd qstat;
+  
 	//io variables 
 	std::string path;
 	
@@ -93,7 +100,7 @@ class DiagMC {
 	
   public: 
 	const double Prem, Pins, Pct, Pctho, Psw, Pdq, Piae, Prae;		//probabilities to choose remove or insert branch
-	  
+	
 	//Random Function
 	std::function<double()> drnd;
 	
@@ -143,6 +150,9 @@ class DiagMC {
 	double G0el(const std::array< double, 3 > & p, const double & tfin, const double & tinit);
 	double Dph(const std::array< double, 3 > & q, const double & tfin, const double & tinit);
 	double Vq2(const std::array< double, 3 > & q);
+	void meas_Epol(const double & cor);
+	ArrayXXd get_Eptest(); 
+	ArrayXd get_Ep();		//return Polaron Energy depending omegas (per Step for SECUMUL)
 	
 	//DiagMC_io.cpp
 	void write();
@@ -151,7 +161,8 @@ class DiagMC {
 	//for multible cores
 	ArrayXXd get_Data();
 	ArrayXXd get_uds() {return updatestat;}
-	ArrayXi get_os() {return orderstat;}
+	ArrayXd get_os() {return orderstat;}
+	ArrayXd get_qs() {return qstat;}
 	
 	 
 	//DiagMC_test.cpp

@@ -1,7 +1,7 @@
 //config
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
-
+ 
 //io
 #include <iostream>
 
@@ -38,7 +38,7 @@ class tmap {
 	
   public: 
 	const int taubin; //How many bins in total
-	const int taumax; //How many bins in total
+	const double taumax; 
 	
 	//create map
 	tmap(const std::vector<std::function<double(int)> > & fvec, const std::vector<int> bins, const std::vector<double> taus);

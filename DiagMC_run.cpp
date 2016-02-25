@@ -23,7 +23,7 @@ using namespace Eigen;
 int main() {
 	#if defined(_OPENMP)
 	  const int nseeds = omp_get_max_threads();
-	  //const int nseeds = 1;
+	  //const int nseeds = 4;
 	#else
 	  const int nseeds = 1;
 	#endif
@@ -33,17 +33,9 @@ int main() {
 	pt::ptree config;
 	pt::read_json("DiagMC_BEC.json", config);
   
-	//Total Statistics and Data
-	std::vector<ArrayXXd> Data_tot(nseeds);
-	  	
-	ArrayXXd uds_tot = ArrayXXd::Zero(11,6);
-	ArrayXi os_tot = ArrayXi::Zero(40);
-	ArrayXd ts_tot = ArrayXd::Zero(8);
-	
 	//constants and parameters
 	double onecore_time= 0;
-  
-	
+  	
 	//container for pointer to all parallel DiagMCs to reuse parallelism
 	std::vector<DiagMC *> DiagMC_pl(nseeds); 
 	
@@ -58,10 +50,25 @@ int main() {
 		  std::cout << "# Initialized thread " << seed << std::endl;
 		}
 	}
+	
+	//Total Statistics and Data
+	std::vector<int> bintemp = as_vector<int>(config, "Bins");
+	
+	std::vector<ArrayXXd> Data_tot(nseeds);
+	
+	std::vector<double> ws = as_vector<double>(config, "Ws_for_Epol");
+	std::vector<ArrayXd> Ep_tot;										//save averages from Ep of each order step
+	ArrayXXd Epcum = ArrayXXd::Zero(ws.size(), nseeds);					//Ep cumulative of each seed 
+	//ArrayXXd Eptest = ArrayXXd::Zero(bintemp[bintemp.size()-1], ws.size());
+
+	ArrayXXd uds_tot = ArrayXXd::Zero(11,6);
+	ArrayXd os_tot = ArrayXd::Zero(config.get<int>("Order_Stat_Size"));
+	ArrayXd ts_tot = ArrayXd::Zero(10);
+	ArrayXd qs_tot = ArrayXd::Zero(config.get<int>("QStat_Size"));
+	
 	  
 #ifdef SECUMUL
 	  //Statistics and Data for SECUMUL
-	  std::vector<int> bintemp = as_vector<int>(config, "Bins");
 	  ArrayXXd SEib = ArrayXXd::Zero(bintemp[bintemp.size()-1],nseeds);
 	  std::vector<ArrayXXd> Norms;
 	  std::vector<ArrayXXd> Ends;
@@ -86,8 +93,6 @@ int main() {
 	  // -------------------- Order Step Loop----------------
 	  //order steps iterator
 	  int ordit =0;
-	  //Order Step Size adaption
-	  double ordstsz_calc=0.;
 	  
 	  //Total Max Order
 	  int TotMaxOrdcheck = -1;
@@ -110,7 +115,7 @@ int main() {
   	  
 		//time control
 		steady_clock::time_point time_begin = steady_clock::now();  //start time
-		ArrayXd timestat = ArrayXd::Zero(8);
+		ArrayXd timestat = ArrayXd::Zero(10);
 		steady_clock::time_point dt_be = steady_clock::now();
   	
 		double nseconds =0.;
@@ -202,18 +207,25 @@ int main() {
 		  }
 			
 		  if ((it%bec->Meas_its) ==0) {
+			steady_clock::time_point t_meas_be= steady_clock::now();
 #ifdef SECUMUL
 			meas += bec->measure(ordit);
 #else
 			meas += bec->measure(0);
 #endif
+			steady_clock::time_point t_meas_end = steady_clock::now();
+			timestat(8) += static_cast<double>((t_meas_end-t_meas_be).count())* steady_clock::period::num / steady_clock::period::den ;
 		  }
 			
 		  if ( (it%bec->Test_its) ==0) {
+			steady_clock::time_point t_test_be= steady_clock::now();
+			
 			try{
 			  bec->test();
 #ifdef SELFENERGY
-			  if (meas < bec->Meas_its) {throw meascheck();}
+			  if (meas < (bec->Test_its/bec->Meas_its) -1) {
+				std::cerr << meas << '\t'<< bec->Test_its/bec->Meas_its << std::endl;
+				throw meascheck();}
 #endif
 #ifdef SECUMUL
 #endif
@@ -222,15 +234,18 @@ int main() {
 			  exit(EXIT_FAILURE);
 			}
 			std::cout << "# Test ok thread " << seed << std::endl;
+			
+			steady_clock::time_point t_test_end = steady_clock::now();
+			timestat(9) += static_cast<double>((t_test_end-t_test_be).count())* steady_clock::period::num / steady_clock::period::den ;
 		  }
 		  
 #ifndef SECUMUL
 		  if ( (it%bec->Write_its) ==0) {
 			//time 
 			steady_clock::time_point time_end = steady_clock::now();
-			nseconds = duration_cast<seconds>(time_end-time_begin).count();
+			nseconds = static_cast<double>(duration_cast<seconds>(time_end-time_begin).count());
 		  	steady_clock::time_point dt_end = steady_clock::now();
-			dt = duration_cast<seconds>(dt_end-dt_be).count();
+			dt = static_cast<double>(duration_cast<seconds>(dt_end-dt_be).count());
 		  
 			std::cout << "# " << seed<<  ": Time on core  " << nseconds << '\t' << "dt  " << dt << '\n' << std::endl;
 			dt_be = steady_clock::now();
@@ -246,22 +261,26 @@ int main() {
 		{	
 		  std::cout << "# Combine thread " << seed << std::endl;
 		  Data_tot[seed] = bec->get_Data();
+		  Epcum.col(seed) = bec->get_Ep();
+		  //Eptest += bec->get_Eptest();
 		  uds_tot += bec->get_uds();
 		  os_tot += bec->get_os();
 		  ts_tot += timestat;
+		  qs_tot += bec->get_qs();
 	
 		  onecore_time += nseconds;
 		}
 	  }//end of omp for loop
-		
+	  
+	  
 #else	//-------------2nd Part of Order Loop--------------------------
 
 		  if ( (it%bec->Write_its) ==0) {
 			//time 
 			steady_clock::time_point time_end = steady_clock::now();
-			nseconds = duration_cast<seconds>(time_end-time_begin).count();
+			nseconds = static_cast<double>(duration_cast<seconds>(time_end-time_begin).count());
 		  	steady_clock::time_point dt_end = steady_clock::now();
-			dt = duration_cast<seconds>(dt_end-dt_be).count();
+			dt = static_cast<double>(duration_cast<seconds>(dt_end-dt_be).count());
 		  
 			std::cout << "# " << seed<<  ": Time in Order Step  " << nseconds << '\t' << "dt  " << dt << '\n' << std::endl;
 			dt_be = steady_clock::now();
@@ -270,7 +289,7 @@ int main() {
 
 			//To check Total Run Time
 			steady_clock::time_point Tott_check_end = steady_clock::now();
-			Tott_check = duration_cast<seconds>(Tott_check_end-Cumt_be).count();
+			Tott_check = static_cast<double>(duration_cast<seconds>(Tott_check_end-Cumt_be).count());
 		  }	
 		  it++;
 			
@@ -286,9 +305,11 @@ int main() {
 		#pragma omp critical  // to have the same staring point
 		{	
 		  if (ordit == 0) {Data_tot[seed] = bec->get_Data();}
+		  Epcum.col(seed) += bec->get_Ep();
 		  uds_tot += bec->get_uds();
 		  os_tot += bec->get_os();
 		  ts_tot += timestat;
+		  qs_tot += bec->get_qs();
 	
 		  onecore_time += nseconds;
 		  
@@ -305,6 +326,9 @@ int main() {
 		//Not Parallel anymore
 		//Combining Data
 		{
+		  //Estimator calc
+		  Ep_tot.push_back(Epcum.rowwise().mean());
+	  	  		  
 		  SEib += SEibtemp;
 		  
 		  //To be able to always print a Norm End comparison 
@@ -336,7 +360,7 @@ int main() {
 			
 		// time per  order step
 		steady_clock::time_point Cumdt_end = steady_clock::now();
-		Cumdt = duration_cast<seconds>(Cumdt_end-Cumdt_be).count();
+		Cumdt = static_cast<double>(duration_cast<seconds>(Cumdt_end-Cumdt_be).count());
 		
 		//Save Step Time for Order Step
 		stptime.push_back(Cumdt);
@@ -357,7 +381,9 @@ int main() {
 		  #pragma omp parallel for ordered schedule(static, 1)
 		  for (int seed = 0; seed < nseeds; seed++)
 		  {
-			DiagMC_pl[seed]->set_av_nei(nnormstemp, nendstemp, ordit);
+			if (config.get<bool>("Averge_Norm_Stpw")){
+			  DiagMC_pl[seed]->set_av_nei(nnormstemp, nendstemp, ordit);
+			}
 			DiagMC_pl[seed]->ord_step();
 		  }
 		} else if (DiagMC_pl[0]->TotMaxOrd == DiagMC_pl[0]->get_order()) { // we reached TotMaxOrd
@@ -368,7 +394,9 @@ int main() {
 		  #pragma omp parallel for ordered schedule(static, 1)
 		  for (int seed = 0; seed < nseeds; seed++)
 		  {	
-			DiagMC_pl[seed]->set_av_nei(nnormstemp, nendstemp, ordit);
+			if (config.get<bool>("Averge_Norm_Stpw")){
+			  DiagMC_pl[seed]->set_av_nei(nnormstemp, nendstemp, ordit);
+			}
 			DiagMC_pl[seed]->set_ordstsz(laststsz);
 			DiagMC_pl[seed]->ord_step();
 		  }
@@ -379,7 +407,7 @@ int main() {
 		ordit++;
 		
 		steady_clock::time_point Cumt_end = steady_clock::now();
-		Cumt = duration_cast<seconds>(Cumt_end-Cumt_be).count();
+		Cumt = static_cast<double>(duration_cast<seconds>(Cumt_end-Cumt_be).count());
 		
 		std::cout << "\n#Total Time " << Cumt << '\t' << "dt  " << Cumdt << '\n' << std::endl;
 		
@@ -394,10 +422,12 @@ int main() {
 		delete DiagMC_pl[seed];
 	  }
 	
-	
+	//Eptest /= static_cast<double>(nseeds);
 	uds_tot.col(4)=uds_tot.col(3)/uds_tot.col(1);
 	uds_tot.col(5)=uds_tot.col(3)/uds_tot.col(0);
+	os_tot/=  static_cast<double>(nseeds);
 	ts_tot /= onecore_time;
+	qs_tot /= static_cast<double>(nseeds);
 	
 	//averages	
 	//all
@@ -467,8 +497,6 @@ int main() {
 	for (int i =0; i < nseeds ; i++)
 	  second_orderb.col(1) += Data_tot[i].col(5);
 	second_orderb.col(1) /=  static_cast<double>(nseeds);
-	
-	
 	
 	//errors
 	if (nseeds > 3) {
@@ -547,13 +575,41 @@ int main() {
 	std::ofstream El("data/secumul/End_last");  
 	El << End_last << '\n';
 	El.close();
-#endif	
 	
+	//Estimators	
+	ArrayXXd Ep_out(Ep_tot.size(), ws.size()+1);
+	Ep_out.col(0) =  Map<const Array<double, 1, Dynamic> > (maxs.data(), mins.size());   //Max Order of Step
+	for (int i =0; i < Ep_tot.size() ; i++)
+	  Ep_out.rightCols(ws.size()).row(i) = Ep_tot[i];
+	
+	std::ofstream Ep_outfile("data/Ep/Epvsord");
+	Ep_outfile << Ep_out << '\n';
+	Ep_outfile.close();
+#endif
+	
+	ArrayXXd Epcum_out(ws.size(),nseeds + 1); 
+	Epcum_out.col(0) =  Map<const Array<double, 1, Dynamic> > (ws.data(), ws.size());   //Max Order of Step
+	Epcum_out.rightCols(nseeds) = Epcum;
+	
+	std::ofstream Epcum_outfile("data/Ep/Epvsws");
+	Epcum_outfile << Epcum_out << '\n';
+	Epcum_outfile.close();
+	
+	/*
+	ArrayXXd Eptest_out(Eptest.rows(), Eptest.cols()+1); 
+	Eptest_out.col(0) = Data_tot[0].col(0);   //tau
+	Eptest_out.rightCols(Eptest.cols()) = Eptest;
+	
+	std::ofstream Eptest_outfile("data/Ep/Eptest");
+	Eptest_outfile << Eptest_out << '\n';
+	Eptest_outfile.close();
+	*/
 	
 	//statistics
-	std::ofstream uds_outfile("data/stats/uds_tot");
+	std::ofstream uds_outfile("data/stats/uds_tot"); 
 	std::ofstream os_outfile("data/stats/os_tot");
 	std::ofstream ts_outfile("data/stats/ts_tot");
+	std::ofstream qs_outfile("data/stats/qs_tot");
 	
 	uds_outfile << "Update Statistics" << '\n';
     uds_outfile << "*************************************" << '\n';
@@ -561,18 +617,24 @@ int main() {
     uds_outfile << "*************************************" << '\n';
     uds_outfile << "CHANGE TAU: " << '\t' << uds_tot.topRows(1) << '\n' << "CT IN HO: " << '\t' << uds_tot.block(7, 0, 1, 6) << '\n' << "INSERT: " << '\t' << uds_tot.block(1, 0, 1, 6) << '\n' << "REMOVE: " << '\t' << uds_tot.block(2, 0, 1, 6) << '\n' << "SWAP:   " << '\t' << uds_tot.block(3, 0, 1, 6) << '\n'<< "SWAPoocc: " << '\t' << uds_tot.block(4, 0, 1, 6) << '\n'<< "SWAPoc: " << '\t' << uds_tot.block(5, 0, 1, 6) << '\n'<< "SWAPco: " << '\t' << uds_tot.block(6, 0, 1, 6) << '\n' << "DQ:      " << '\t' << uds_tot.block(8, 0, 1, 6)<< '\n' << "IAE:      " << '\t' << uds_tot.block(9, 0, 1, 6) << '\n' << "RAE :         " << '\t' << uds_tot.block(10, 0, 1, 6) << '\n' << '\n';
 	
-	MatrixXi orderprint(os_tot.size(),2);
-	orderprint << VectorXi::LinSpaced(os_tot.size(), 0, os_tot.size()-1), os_tot;
+	MatrixXd orderprint(os_tot.size(),2);
+	orderprint << ArrayXd::LinSpaced(config.get<int>("Order_Stat_Size"), 0, config.get<double>("Order_Stat_Size")-1), os_tot;
 	
 	os_outfile << "Order Statistics" << '\n';
 	os_outfile << orderprint  << '\n';
 	
 	ts_outfile << "Time Statistics [%]" << std:: endl;
-	ts_outfile << "CHANGE TAU:" << '\t' << ts_tot(0) << '\n' << "CT HO:     " << '\t' <<ts_tot(1)<< '\n' <<  "INSERT: " << '\t' << ts_tot(2) << '\n' << "REMOVE: " << '\t' << ts_tot(3) << '\n' <<  "SWAP:     " << '\t' << ts_tot(4) << '\n' << "DQ:      " << '\t' << ts_tot(5) << '\n' << "IAE:      " << '\t' << ts_tot(6) << '\n' << "RAE :       " << '\t' << ts_tot(7) << '\n';		
-
+	ts_outfile << "CHANGE TAU:" << '\t' << ts_tot(0) << '\n' << "CT HO:     " << '\t' <<ts_tot(1)<< '\n' <<  "INSERT: " << '\t' << ts_tot(2) << '\n' << "REMOVE: " << '\t' << ts_tot(3) << '\n' <<  "SWAP:     " << '\t' << ts_tot(4) << '\n' << "DQ:      " << '\t' << ts_tot(5) << '\n' << "IAE:      " << '\t' << ts_tot(6) << '\n' << "RAE :       " << '\t' << ts_tot(7) << '\n' << "MEAS:       " << '\t' << ts_tot(8) << '\n' << "TEST:       " << '\t' << ts_tot(9) <<'\n';		
+	
+	MatrixXd qprint(qs_tot.size(),2);
+	qprint << ArrayXd::LinSpaced(config.get<int>("QStat_Size"), 0, config.get<double>("Q_Cutoff")-1), qs_tot;
+	qs_outfile << "Phonon Momentum Statistics" << '\n';
+	qs_outfile << qprint  << '\n';
+	
 	uds_outfile.close();
 	os_outfile.close();
 	ts_outfile.close();
+	qs_outfile.close();
 	
 #ifdef SECUMUL
 	ArrayXXd minmax_out(mins.size(), 6);

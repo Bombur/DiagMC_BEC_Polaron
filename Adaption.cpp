@@ -15,7 +15,7 @@ bottleneck Adaption::whichbtlnk() {
   try{
 	const std::array<double, 3> compare = {normdev, enddev, tdev};
 	std::size_t max = std::min_element(compare.begin(), compare.end()) - compare.begin();
-	if ( max < 0 || max > 2) {throw std::out_of_range("Adaption compare failure!");}
+	if ( max > 2) {throw std::out_of_range("Adaption compare failure!");}
 	bottleneck tmp = static_cast<bottleneck>(max);
 	return tmp;
   } catch (std::exception& e){
@@ -30,6 +30,7 @@ int Adaption::ordstszadapt() {
 	case NORM: ordstsz = (int)((ordstsz/(1.+tdev))+0.5); break;
 	case END: ordstsz = (int)((ordstsz/(1.+tdev))+0.5); break;
 	case TIME: ordstsz = (int)((ordstsz*(1.+countdev))+0.5); break;
+  	default: std::cerr << "Default chosen in Adaption!" << std::endl; break;
   }
   if (ordstsz == 0) {ordstsz =1;}
   return ordstsz;

@@ -32,13 +32,25 @@ ArrayXXd DiagMC::get_Data() {
 #ifdef MEASREWEIGHT
   output.rightCols(5)*=Data*(G0p/CG0p);
 #else
+//Copy everything  
   output.rightCols(5)*=Data*(1./CG0p);
+  
+//Reweights and Norms  
   //zero order (fake check)
   output.col(2)*= G0p;
 #ifndef FOG0SE
   //first order  G0SEG0 
   output.col(3)*= G0p; 
 #endif
+  
+#ifdef SIGMA
+  //Orders >2 we measure just SE
+  //all_orders
+  output.col(1) /= G0p;
+  //2nd orders
+  output.rightCols(2) /= G0p;
+#endif
+    
 #endif
 
 #else

@@ -39,7 +39,8 @@ class Diagram {
 	std::vector< vertex > times;
 	std::vector< std::array<double,3> > phprop; // to control the electron prop vector
 	std::vector< std::array<double,3> > elprop;
-	  
+	
+	std::size_t befcap;  //to check Capacity of the containers
   public:
 	Diagram();
 	void set(const double & p, const double & tau, const std::function<double()> & rnd);
@@ -88,6 +89,9 @@ class Diagram {
 	void printall(); 
 	bool is_reducible();
 	int arch_num(const int &);
+	
+	//secumul
+	void capacity_check();
 	
 	
 };

@@ -23,7 +23,7 @@ Diagram::Diagram() {
   elprop.reserve(1000);
   elprop.assign(1, zero);
   
-
+  befcap = times.capacity();
   
   pr_arc = 0;
   pr_tauin = 0.;
@@ -250,23 +250,19 @@ int Diagram::propose_rematend(const double & dtins, const double & dqins) {
 
 
 void Diagram::insert() {
-  	std::vector< vertex>::iterator tit = times.begin() + pr_arc;		//iterators for different matrices
-	std::vector< std::array<double,3> >::iterator eit = elprop.begin() + pr_arc;
-	
 	for (int i = 0; i<((2*order)+1); i++) {
 	  if (times[i].link > pr_arc) {times[i].link +=2;}
 	}
 	
-	times.insert(tit+1, pr_tau1);										//insert tau1 and tau2
-	times.insert(tit+2, pr_tau2);
+	times.insert(times.begin() + pr_arc + 1, pr_tau1);										//insert tau1 and tau2
+	times.insert(times.begin() + pr_arc + 2, pr_tau2);
 		
-	elprop.insert(eit+1, std::move(elprop[pr_arc]- pr_q));					//insert oldp-q in arc+1
-	elprop.insert(eit+2, std::move(elprop[pr_arc]));								//insert oldp in arc+2	  
+	elprop.insert(elprop.begin() + pr_arc + 1, std::move(elprop[pr_arc]- pr_q));					//insert oldp-q in arc+1
+	elprop.insert(elprop.begin() + pr_arc + 2, std::move(elprop[pr_arc]));								//insert oldp in arc+2	  
 	
 #ifndef NCHECK
-	std::vector< std::array<double,3> >::iterator pit = phprop.begin() + pr_arc;
-	phprop.insert(pit+1, std::move(pr_q + phprop[pr_arc]));							//insert q+oldq in arc+1
-	phprop.insert(pit+2, std::move(phprop[pr_arc]));								//insert oldq in arc+2
+	phprop.insert(phprop.begin() + pr_arc + 1, std::move(pr_q + phprop[pr_arc]));							//insert q+oldq in arc+1
+	phprop.insert(phprop.begin() + pr_arc + 2, std::move(phprop[pr_arc]));								//insert oldq in arc+2
 #endif
 	
 	order+=1;
@@ -373,7 +369,6 @@ void Diagram::rematend() {
 	
 	order-=1;
 }
-
 
 
 

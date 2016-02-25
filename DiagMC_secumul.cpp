@@ -11,6 +11,10 @@ void DiagMC::ord_step() {
   SEib= ArrayXd::Zero(taumap.taubin);
   Norms = ArrayXd::Zero(taumap.taubin);
   Ends = ArrayXd::Zero(taumap.taubin);
+   
+  Epol = ArrayXXd::Zero(taumap.taubin, ws.size());
+
+  diag.capacity_check();
 }
 
 double DiagMC::normcalc() {
@@ -42,20 +46,31 @@ double DiagMC::pref_calc(){
 	pref *= nends[i];
 	pref /= nnorms[i+1];
   }
-  return pref * static_cast<double>(taumap.taubin)/taumap.taumax/nnorms[0];
+  pref /= nnorms[0];
+  
+  return pref;
 }
   
 
 ArrayXd DiagMC::get_SEib(){
-  return SEib * pref_calc();
+#ifdef SIGMA
+  return SEib * (taumap.norm_table()*pref_calc()/G0p) ;
+#endif
+  return SEib * (taumap.norm_table()*pref_calc()) ;
 }
 
 ArrayXd DiagMC::get_NormDiag(){
-  return Norms * pref_calc();
+#ifdef SIGMA
+  return Norms * (taumap.norm_table()*pref_calc()/G0p);
+#endif
+  return Norms * (taumap.norm_table()*pref_calc());
 }
 
 ArrayXd DiagMC::get_EndDiag(){
-  return Ends * pref_calc();
+#ifdef SIGMA
+  return Ends * (taumap.norm_table()*pref_calc()/G0p);
+#endif
+  return Ends * (taumap.norm_table()*pref_calc());
 }
 
 

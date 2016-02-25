@@ -69,8 +69,12 @@ int tmap::bin(const double & tau) {
 #ifndef NDEBUG
   std::map<double, int>::iterator lower;
   lower = mymap.lower_bound(tau);
-
-  assert(lower->second == upper->second);
+  
+  if (lower->second != upper->second) {
+    std::cerr << "BIN assign Warning!" << std::endl;
+    std::cerr<<tau << '\t' << lower->first << '\t' << upper->first << '\t' << lower->second << '\t' << upper->second << std::endl;
+  } 
+  //assert(lower->second == upper->second);
 #endif
   
   return std::prev(upper,1)->second;  

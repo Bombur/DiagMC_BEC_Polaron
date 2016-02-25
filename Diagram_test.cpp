@@ -4,14 +4,18 @@ void Diagram::test(const double & qc) {
   try {
 	//printall();
 	if (times.size() != (2*order)+2) {throw dnf_diagvec();}
-	if (phprop.size() != times.size()-1) {throw dnf_diagvec();}
+	if (elprop.size() != times.size()-1) {throw dnf_diagvec();}
+#ifndef NCHECK
 	if (elprop.size() != phprop.size()) {throw dnf_diagvec();}
+#endif
 	
 	if (times[0].link != (2*order)+1) {throw timeserr();}
 	if (times[(2*order)+1].link != 0) {throw timeserr();}
 	
 	for (int i = 0; i< 3; i++) {
+#ifndef NCHECK
 	  if (fabs(phprop[0][i] - phprop[2*order][i]) > 0.0000001) {throw phproperr();}
+#endif
 	  if (fabs(elprop[0][i] - elprop[2*order][i]) > 0.0000001) {throw elproperr();}
 	}
 	  
@@ -24,9 +28,9 @@ void Diagram::test(const double & qc) {
 	for (int i=0; i<(2*order)+1; i++) {
 
 	  if (times[i].t > times[i+1].t) {throw timeserr();}
-	  for (int i2 = 0; i2< 3; i2++) {
-		if (fabs((get_p(i).at(i2)+get_q(i).at(i2)) - get_p(0).at(i2)) > 0.0000001)  {throw momerr();}
-	  }
+#ifndef NCHECK
+	  if (vsq(get_p(i)+ get_q(i) - get_p(0)) > 0.0000001)  {throw momerr();}
+#endif
 	  if(times[i].link > i && i>0){
 		if (vsq(elprop[i-1]-elprop[i]-elprop[times[i].link]+elprop[times[i].link-1]) > 0.0000001){throw qerr();}
 	  }
@@ -106,4 +110,11 @@ int Diagram::arch_num(const int & ver = 0) {
 	if (times[i].link > i) { num +=1;}
   }
   return num;
+}
+
+void Diagram::capacity_check() {
+  if (times.capacity() > befcap) {
+	std::cout  << "Capacity of Diagram containers changed from " << befcap << " to " << times.capacity() << "!" <<std::endl;
+	befcap = times.capacity();
+  }
 }

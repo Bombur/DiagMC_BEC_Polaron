@@ -14,8 +14,6 @@ void DiagMC::test() {
 	//tau
 	if (diag.get_tau() > taumap.taumax || diag.get_tau() < 0) {throw oor_tau();}
 	
-	//Weight Check
-	//if (Data((int)(drnd()*taumap.taubin), 0) == 0) {throw data_empty();}
 	double CG0p = 0;
 	for (int i=0; i< taumap.taubin; i++) {
 #ifdef SELFENERGY
@@ -31,15 +29,13 @@ void DiagMC::test() {
 #endif
 	  CG0p += Data(i, 1);	  
 	}
+	//Weight Check
 	double weight_diff = fabs(weight_calc() - global_weight);
 	if (weight_diff > (0.0000001*global_weight)){
 	  std::cerr << weight_diff << '\t' << weight_calc() << '\t' << global_weight << std::endl;  
-	  if (weight_diff > 1.0e-250) {
-		throw weight_check();
-	  } else {
-		std::cerr << "Warning! Weight Check would fail in double limits!" <<std::endl;
-	  }
+	  std::cerr << "Warning! Weight Check would fail in Order" << diag.get_order() <<"!" <<std::endl;
 	}
+	
 
 	//Statistics
 	for (int i = 0; i< 4; i++) {
