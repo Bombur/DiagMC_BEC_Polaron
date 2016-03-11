@@ -627,7 +627,7 @@ int main() {
 	ts_outfile << "CHANGE TAU:" << '\t' << ts_tot(0) << '\n' << "CT HO:     " << '\t' <<ts_tot(1)<< '\n' <<  "INSERT: " << '\t' << ts_tot(2) << '\n' << "REMOVE: " << '\t' << ts_tot(3) << '\n' <<  "SWAP:     " << '\t' << ts_tot(4) << '\n' << "DQ:      " << '\t' << ts_tot(5) << '\n' << "IAE:      " << '\t' << ts_tot(6) << '\n' << "RAE :       " << '\t' << ts_tot(7) << '\n' << "MEAS:       " << '\t' << ts_tot(8) << '\n' << "TEST:       " << '\t' << ts_tot(9) <<'\n';		
 	
 	MatrixXd qprint(qs_tot.size(),2);
-	qprint << ArrayXd::LinSpaced(config.get<int>("QStat_Size"), 0, config.get<double>("Q_Cutoff")-1), qs_tot;
+	qprint << ArrayXd::LinSpaced(config.get<int>("QStat_Size"), 0, config.get<double>("Q_Cutoff")), qs_tot;
 	qs_outfile << "Phonon Momentum Statistics" << '\n';
 	qs_outfile << qprint  << '\n';
 	
@@ -637,23 +637,23 @@ int main() {
 	qs_outfile.close();
 	
 #ifdef SECUMUL
-	ArrayXXd minmax_out(mins.size(), 6);
+	ArrayXXd minmax_out(mins.size(), 7);
 	minmax_out.col(0) = Map<const Array<double, 1, Dynamic> > (mins.data(), mins.size());
 	minmax_out.col(1) = Map<const Array<double, 1, Dynamic> > (maxs.data(), maxs.size());
 	minmax_out.col(2) = Map<const Array<double, 1, Dynamic> > (nnorms.data(), nnorms.size());
 	minmax_out.col(3) = Map<const Array<double, 1, Dynamic> > (nends.data(), nends.size());
 	minmax_out.col(4) = Map<const Array<double, 1, Dynamic> > (stptime.data(), stptime.size());
 	minmax_out.col(5) = Map<const Array<double, 1, Dynamic> > (bottlenecks.data(), bottlenecks.size());
+	minmax_out.col(6) = minmax_out.col(3) / minmax_out.col(2);
 	std::ofstream minmax_outfile("data/stats/minmax");
 	minmax_outfile << "Minimum Maximum Order Statistics" << '\n';
     minmax_outfile << "*************************************" << '\n';
-	minmax_outfile << "Min \t Max  \t nMin \t nMax \t time [s] \t Bottleneck \n" ;
+	minmax_outfile << "Min \t Max  \t nMin \t nMax \t time [s] \t Bottleneck \t nRatio\n" ;
 	minmax_outfile << minmax_out;
 	minmax_outfile.close();
 #endif	
 	
-	const std::string anacommand = "python3 data_ana.py";
-	std::cout << "# Analysing data, result = " << system(anacommand.c_str()) << std::endl;
+	 std::cout << "# Analysing data, result = " << system(config.get<std::string>("Ana_File").c_str()) << std::endl;
   
 	return 0;
 }

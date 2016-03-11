@@ -1,11 +1,11 @@
 #include "DiagMC.h"
 
 //Propagators
+#ifdef FP
 double DiagMC::G0el(const std::array< double, 3 > & p, const double & tfin, const double & tinit) {
   return exp(-((vsq(p)/2.) - mu)*(tfin-tinit));
 }
 
-#ifdef FP
 double DiagMC::Dph(const std::array< double, 3> & q, const double & tfin, const double & tinit) {
   return exp((-wp)*(tfin-tinit));
 }
@@ -17,6 +17,10 @@ double DiagMC::Vq2(const std::array< double, 3> & q) {
 #endif
 
 #ifdef BEC
+double DiagMC::G0el(const std::array< double, 3 > & p, const double & tfin, const double & tinit) {
+  return exp(-((vsq(p)/2. * sqrt(2.) /relm) - mu)*(tfin-tinit));
+}
+
 double DiagMC::Dph(const std::array< double, 3> & q, const double & tfin, const double & tinit) {
   double omega = sqrt(vsq(q) *(1.+(vsq(q)/2.)));
   return exp((-omega)*(tfin-tinit));
