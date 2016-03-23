@@ -54,7 +54,7 @@ class DiagMC {
 	int maxord;
 #endif 
 
-#ifdef FP  
+#ifdef FP
 	double wp; //Froehlich Polaron Omega
 #endif
  
@@ -72,6 +72,8 @@ class DiagMC {
 	const double dtins;			// for insert at end
 	const double dqins;			// for insert at endend
 	const double fw;  			// fake weight (correction for G0) 
+	const double fwzero; 		//fake weight for zero order
+	const double fwone;		//fake weight for order <=1	
 	const double sigfac;		//factor for sigma of Gauss distribution for choosing q
 
 	//Cumulative SE Calculation

@@ -47,7 +47,8 @@ double DiagMC::pref_calc(){
 	pref /= nnorms[i+1];
   }
   pref /= nnorms[0];
-  
+  pref *= fwzero; 
+  pref *= fwone;
   return pref;
 }
   

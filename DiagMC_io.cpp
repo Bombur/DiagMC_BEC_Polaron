@@ -23,9 +23,11 @@ void DiagMC::write() {
 ArrayXXd DiagMC::get_Data() {
   ArrayXXd  output(taumap.taubin, 6);
 	
-  double CG0p = Data.col(1).sum();
+  double CG0p = Data.col(1).sum()/fwzero/fwone;
   output.col(0) = taumap.print();
   output.rightCols(5) = taumap.norm_table().replicate<1,5>();
+  output.col(2) /= (fwzero*fwone);
+  output.col(3) /= fwone;
 
 #ifdef SELFENERGY
 //if for how to reweight the data
@@ -39,7 +41,7 @@ ArrayXXd DiagMC::get_Data() {
   //zero order (fake check)
   output.col(2)*= G0p;
 #ifndef FOG0SE
-  //first order  G0SEG0 
+  //first order  G0SEG0
   output.col(3)*= G0p; 
 #endif
   

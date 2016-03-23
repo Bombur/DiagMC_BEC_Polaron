@@ -92,8 +92,10 @@ int DiagMC::measure(const int & ordstp) {
   }
 #endif
 
-//Estimator measurement
-  meas_Epol(cor);
+//Estimator measurement. We need usually Self Energy sampling for it
+  if (diag.get_order() == 1 || (diag.get_order() > 1  && !diag.is_reducible())) {
+	meas_Epol(cor);
+  }
 
 //q Histogram
   for (auto vert=1; vert < 2*diag.get_order(); vert++){

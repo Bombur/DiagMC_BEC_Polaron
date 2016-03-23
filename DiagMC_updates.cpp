@@ -85,6 +85,8 @@ int DiagMC::insert() {
   //order
   double n = static_cast<double>(diag.get_order());
   weight *= fw;  //Fake-Weight
+  if (diag.get_order() == 0) {weight /= fwzero;}
+  if (diag.get_order() == 1) {weight /= fwone;}
 
   weight *= Prem/Pins;	
   weight /= (1. + (n+1.)*2.); 	//remove selecting vertex 
@@ -148,8 +150,10 @@ int DiagMC::remove() {
   //order
   double n = static_cast<double>(diag.get_order());
   weight /= fw;   // for fake function
-
-  weight *= Pins/Prem;	
+  if (diag.get_order() == 1) {weight *= fwzero;}
+  if (diag.get_order() == 2) {weight *= fwone;}
+  
+weight *= Pins/Prem;	
   weight /= (1. + (n-1.)*2.); 	//insert selecting vertex 
   weight *= (1. + n*2.); 		//remove selecting vertex
   
