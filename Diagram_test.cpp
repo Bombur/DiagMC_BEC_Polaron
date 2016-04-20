@@ -2,7 +2,6 @@
 
 void Diagram::test(const double & qc) {
   try {
-	//printall();
 	if (times.size() != (2*order)+2) {throw dnf_diagvec();}
 	if (elprop.size() != times.size()-1) {throw dnf_diagvec();}
 #ifndef NCHECK
@@ -24,6 +23,7 @@ void Diagram::test(const double & qc) {
 	for (int i=0; i<(2*order)+2; i++) {
 	  tmp(times[i].link) +=1;
 	  if (times[i].link == i) {throw timeserr();}
+	  if (times[i].t <0) {throw timeserr();}
 	}
 	for (int i=0; i<(2*order)+1; i++) {
 
@@ -56,7 +56,7 @@ void Diagram::test(const double & qc) {
 
 void Diagram::printall() {
   
-  std::cout << drnd()  << std::endl;
+  //std::cout << drnd()  << std::endl;
   std::cout <<  order << '\n';
   std::cout <<'\n';
   for (vertex i: times){

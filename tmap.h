@@ -38,7 +38,7 @@ class tmap {
 	
   public: 
 	const int taubin; //How many bins in total
-	const double taumax; 
+	const double taumax;
 	
 	//create map
 	tmap(const std::vector<std::function<double(int)> > & fvec, const std::vector<int> bins, const std::vector<double> taus);

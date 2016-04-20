@@ -27,10 +27,10 @@ WARNINGS = -Wall -Wextra -Wpointer-arith  -Wcast-qual -Wcast-align \
 #CFLAGS= -O0 -funroll-all-loops -ffast-math -fopenmp $(WARNINGS)
 #CFLAGS = $(WARNINGS)
 CFLAGS= -O3 -funroll-all-loops -ffast-math -fopenmp
-#CFLAGS = -pg
+#CFLAGS = -pg -fopenmp
 
 LDFLAGS= -fopenmp
-#LDFLAGS= -pg
+#LDFLAGS= -pg -fopenmp
 
 #Include Path
 INC=/project/theorie/h/H.Guertner/lib

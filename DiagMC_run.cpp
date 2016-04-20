@@ -53,18 +53,24 @@ int main() {
 	
 	//Total Statistics and Data
 	std::vector<int> bintemp = as_vector<int>(config, "Bins");
+	std::vector<double> tautemp = as_vector<double>(config, "Taus");
 	
 	std::vector<ArrayXXd> Data_tot(nseeds);
 	
+	//Estimators
 	std::vector<double> ws = as_vector<double>(config, "Ws_for_Epol");
-	std::vector<ArrayXd> Ep_tot;										//save averages from Ep of each order step
-	ArrayXXd Epcum = ArrayXXd::Zero(ws.size(), nseeds);					//Ep cumulative of each seed 
+	std::vector<ArrayXd> Epcum;										//save averages from Ep cumulative of each order step
+	ArrayXXd Eptot= ArrayXXd::Zero(ws.size(), nseeds);				//Ep tot of each seed 
 	//ArrayXXd Eptest = ArrayXXd::Zero(bintemp[bintemp.size()-1], ws.size());
+	std::vector<ArrayXXd> SE(nseeds, ArrayXXd::Zero(bintemp[bintemp.size()-1], 4)); 
+	std::vector<ArrayXXcd> G0SEiw(nseeds, ArrayXXcd::Zero(config.get<int>("Omega_bin"), 3)); 
 
 	ArrayXXd uds_tot = ArrayXXd::Zero(11,6);
 	ArrayXd os_tot = ArrayXd::Zero(config.get<int>("Order_Stat_Size"));
 	ArrayXd ts_tot = ArrayXd::Zero(10);
-	ArrayXd qs_tot = ArrayXd::Zero(config.get<int>("QStat_Size"));
+	ArrayXXd qs_tot = ArrayXXd::Zero(config.get<int>("QStat_Size"), 2);
+	ArrayXXd taus_tot = ArrayXXd::Zero(bintemp[bintemp.size()-1], 5); // Tau Histogram
+	ArrayXXd testhisto = ArrayXXd::Zero(2*bintemp[bintemp.size()-1]+2, 2);
 	
 	  
 #ifdef SECUMUL
@@ -86,7 +92,6 @@ int main() {
 	  double Cumdt= 0.;
 	  
 	  //temporary Containers to transfer Data
-	  ArrayXXd SEibtemp(bintemp[bintemp.size()-1],nseeds);
 	  ArrayXXd Normstemp(bintemp[bintemp.size()-1],nseeds);
 	  ArrayXXd Endstemp(bintemp[bintemp.size()-1],nseeds);
 	  
@@ -120,6 +125,7 @@ int main() {
   	
 		double nseconds =0.;
 		double dt= 0.;
+		double speed = 0.; 
 		
 		//measure control
 		int meas =0;
@@ -184,50 +190,44 @@ int main() {
 				 
 		  }
 
-#ifdef FP
-		  else if ((action- bec->Prem- bec->Pins - bec->Pct - bec->Pdq - bec->Psw - bec->Pctho) < bec->Piae) {
+		  else if ((action- bec->Prem- bec->Pins - bec->Pct - bec->Pdq - bec->Psw - bec->Pctho) < bec->Pic) {
 				  
-			steady_clock::time_point t_iae_be= steady_clock::now();
-			//bec->insatend();
-			steady_clock::time_point t_iae_end = steady_clock::now();
-			timestat(6) += static_cast<double>((t_iae_end-t_iae_be).count())* steady_clock::period::num / steady_clock::period::den ;
+			steady_clock::time_point t_ic_be= steady_clock::now();
+			bec->inscrossed();
+			steady_clock::time_point t_ic_end = steady_clock::now();
+			timestat(6) += static_cast<double>((t_ic_end-t_ic_be).count())* steady_clock::period::num / steady_clock::period::den ;
 				 
 		  }
 				
-		  else if ((action- bec->Prem- bec->Pins - bec->Pct - bec->Pdq - bec->Psw - bec->Pctho - bec->Piae) < bec->Prae) {
+		  else if ((action- bec->Prem- bec->Pins - bec->Pct - bec->Pdq - bec->Psw - bec->Pctho - bec->Pic) < bec->Prc) {
 				  
-			steady_clock::time_point t_rae_be = steady_clock::now();
-			//bec->rematend();
-			steady_clock::time_point t_rae_end = steady_clock::now();
-			timestat(7) += static_cast<double>((t_rae_end-t_rae_be).count())* steady_clock::period::num / steady_clock::period::den ;
+			steady_clock::time_point t_rc_be = steady_clock::now();
+			bec->remcrossed();
+			steady_clock::time_point t_rc_end = steady_clock::now();
+			timestat(7) += static_cast<double>((t_rc_end-t_rc_be).count())* steady_clock::period::num / steady_clock::period::den ;
 		  }
-#endif
+
 		  else { 
 			assert(0);
 		  }
 			
 		  if ((it%bec->Meas_its) ==0) {
 			steady_clock::time_point t_meas_be= steady_clock::now();
-#ifdef SECUMUL
-			meas += bec->measure(ordit);
-#else
-			meas += bec->measure(0);
-#endif
+			bec->meas_histo(); 
+			meas += bec->measure();
 			steady_clock::time_point t_meas_end = steady_clock::now();
 			timestat(8) += static_cast<double>((t_meas_end-t_meas_be).count())* steady_clock::period::num / steady_clock::period::den ;
 		  }
 			
 		  if ( (it%bec->Test_its) ==0) {
 			steady_clock::time_point t_test_be= steady_clock::now();
-			
+			//bec->meas_histo(); 
 			try{
 			  bec->test();
 #ifdef SELFENERGY
 			  if (meas < (bec->Test_its/bec->Meas_its) -1) {
 				std::cerr << meas << '\t'<< bec->Test_its/bec->Meas_its << std::endl;
 				throw meascheck();}
-#endif
-#ifdef SECUMUL
 #endif
 			} catch (std::exception& e){
 			  std::cerr << e.what() << std::endl;
@@ -246,10 +246,10 @@ int main() {
 			nseconds = static_cast<double>(duration_cast<seconds>(time_end-time_begin).count());
 		  	steady_clock::time_point dt_end = steady_clock::now();
 			dt = static_cast<double>(duration_cast<seconds>(dt_end-dt_be).count());
-		  
-			std::cout << "# " << seed<<  ": Time on core  " << nseconds << '\t' << "dt  " << dt << '\n' << std::endl;
+			
+			speed = static_cast<double>(it)/nseconds;
+			std::cout << "# " << seed<<  ": Time on core  " << nseconds << '\t' << "dt  " << dt << '\t' << "speed [its/s]: " << speed << '\n' << std::endl;
 			dt_be = steady_clock::now();
-
 		  }	
 		  it++;
 
@@ -261,12 +261,16 @@ int main() {
 		{	
 		  std::cout << "# Combine thread " << seed << std::endl;
 		  Data_tot[seed] = bec->get_Data();
-		  Epcum.col(seed) = bec->get_Ep();
+		  Eptot.col(seed) = bec->get_Ep();
 		  //Eptest += bec->get_Eptest();
+		  SE[seed] = bec->get_SE();
+		  G0SEiw[seed] = bec->get_G0SEiw();
 		  uds_tot += bec->get_uds();
 		  os_tot += bec->get_os();
 		  ts_tot += timestat;
 		  qs_tot += bec->get_qs();
+		  taus_tot += bec->get_taus();
+		  testhisto += bec->get_testhisto();
 	
 		  onecore_time += nseconds;
 		}
@@ -305,16 +309,25 @@ int main() {
 		#pragma omp critical  // to have the same staring point
 		{	
 		  if (ordit == 0) {Data_tot[seed] = bec->get_Data();}
-		  Epcum.col(seed) += bec->get_Ep();
+		  Eptot.col(seed) += bec->get_Ep();
+		  ArrayXXd tmp = bec->get_SE();
+		  SE[seed].rightCols(tmp.cols()-1) += tmp.rightCols(tmp.cols()-1);
+		  SE[seed].col(0) = tmp.col(0);
+		  ArrayXXcd tmp2 = bec->get_G0SEiw(); 
+		  G0SEiw[seed].rightCols(tmp2.cols()-1) += tmp2.rightCols(tmp2.cols()-1);
+		  G0SEiw[seed].col(0) = tmp2.col(0); 
 		  uds_tot += bec->get_uds();
 		  os_tot += bec->get_os();
 		  ts_tot += timestat;
 		  qs_tot += bec->get_qs();
+		  tmp = bec->get_taus();
+		  taus_tot.rightCols(tmp.cols()-1) += tmp.rightCols(tmp.cols()-1);
+		  taus_tot.col(0) = tmp.col(0);
 	
 		  onecore_time += nseconds;
 		  
 		  //transfering Data
-		  SEibtemp.col(seed) = bec->get_SEib();
+		  SEib.col(seed) += bec->get_SEib();
 		  Normstemp.col(seed) = bec->get_NormDiag();
 		  Endstemp.col(seed) = bec->get_EndDiag();
 		  nnormstemp += bec->normcalc();
@@ -327,11 +340,9 @@ int main() {
 		//Combining Data
 		{
 		  //Estimator calc
-		  Ep_tot.push_back(Epcum.rowwise().mean());
+		  Epcum.push_back(Eptot.rowwise().mean());
 	  	  		  
-		  SEib += SEibtemp;
-		  
-		  //To be able to always print a Norm End comparison 
+	  	  //To be able to always print a Norm End comparison 
 		  if (ordit == 0) {
 			Norms.push_back(Normstemp);
 			Norms.push_back(Normstemp);
@@ -428,6 +439,8 @@ int main() {
 	os_tot/=  static_cast<double>(nseeds);
 	ts_tot /= onecore_time;
 	qs_tot /= static_cast<double>(nseeds);
+	taus_tot /= static_cast<double>(nseeds);
+	testhisto /= static_cast<double>(nseeds);
 	
 	//averages	
 	//all
@@ -575,25 +588,17 @@ int main() {
 	std::ofstream El("data/secumul/End_last");  
 	El << End_last << '\n';
 	El.close();
-	
-	//Estimators	
-	ArrayXXd Ep_out(Ep_tot.size(), ws.size()+1);
-	Ep_out.col(0) =  Map<const Array<double, 1, Dynamic> > (maxs.data(), mins.size());   //Max Order of Step
-	for (int i =0; i < Ep_tot.size() ; i++)
-	  Ep_out.rightCols(ws.size()).row(i) = Ep_tot[i];
-	
-	std::ofstream Ep_outfile("data/Ep/Epvsord");
-	Ep_outfile << Ep_out << '\n';
-	Ep_outfile.close();
 #endif
+
 	
-	ArrayXXd Epcum_out(ws.size(),nseeds + 1); 
-	Epcum_out.col(0) =  Map<const Array<double, 1, Dynamic> > (ws.data(), ws.size());   //Max Order of Step
-	Epcum_out.rightCols(nseeds) = Epcum;
+//---------------------------------------------------ESTIMATORS
+	ArrayXXd Eptot_out(ws.size(),nseeds + 1); 
+	Eptot_out.col(0) =  Map<const Array<double, 1, Dynamic> > (ws.data(), ws.size());   //Max Order of Step
+	Eptot_out.rightCols(nseeds) = Eptot;
 	
-	std::ofstream Epcum_outfile("data/Ep/Epvsws");
-	Epcum_outfile << Epcum_out << '\n';
-	Epcum_outfile.close();
+	std::ofstream Eptot_outfile("data/Ep/Epvsws");
+	Eptot_outfile << Eptot_out << '\n';
+	Eptot_outfile.close();
 	
 	/*
 	ArrayXXd Eptest_out(Eptest.rows(), Eptest.cols()+1); 
@@ -604,18 +609,115 @@ int main() {
 	Eptest_outfile << Eptest_out << '\n';
 	Eptest_outfile.close();
 	*/
+
+#ifdef SELFENERGY
+#ifdef SECUMUL
+	ArrayXXd Ep_out(Epcum.size(), ws.size()+1);
+	Ep_out.col(0) =  Map<const Array<double, 1, Dynamic> > (maxs.data(), mins.size());   //Max Order of Step
+	for (int i =0; i < Epcum.size() ; i++)
+	  Ep_out.rightCols(ws.size()).row(i) = Epcum[i];
 	
-	//statistics
+	std::ofstream Ep_outfile("data/Ep/Epvsord");
+	Ep_outfile << Ep_out << '\n';
+	Ep_outfile.close();
+#endif
+#endif
+	
+	//SE 1st
+	ArrayXXd SE_1st(SE[0].rows(), 3);  // 0:tau, 1:average, 2:error
+	SE_1st << SE[0].col(0) , ArrayXXd::Zero(SE[0].rows(), 2);   //tau
+	for (int i =0; i < nseeds ; i++)
+	  SE_1st.col(1) += SE[i].col(2);
+	SE_1st.col(1) /=  static_cast<double>(nseeds);
+	
+	//SE >1
+	ArrayXXd SE_big1(SE[0].rows(), 3);  // 0:tau, 1:average, 2:error
+	SE_big1 << SE[0].col(0) , ArrayXXd::Zero(SE[0].rows(), 2);   //tau
+	for (int i =0; i < nseeds ; i++)
+	  SE_big1.col(1) += SE[i].col(3);
+	SE_big1.col(1) /=  static_cast<double>(nseeds);
+	
+	//SE all
+	ArrayXXd SE_all(SE[0].rows(), 3);  // 0:tau, 1:average, 2:error
+	SE_all << SE[0].col(0) , ArrayXXd::Zero(SE[0].rows(), 2);   //tau
+	for (int i =0; i < nseeds ; i++)
+	  SE_all.col(1) += SE[i].col(1);
+	SE_all.col(1) /=  static_cast<double>(nseeds);
+	
+	if (nseeds >3) {
+	  for (int i=0; i<nseeds; i++){
+		SE_1st.col(2) += (SE[i].col(2)-SE_1st.col(1)).pow(2);
+		SE_big1.col(2) += (SE[i].col(3)-SE_big1.col(1)).pow(2);
+		SE_all.col(2) += (SE[i].col(1)-SE_all.col(1)).pow(2);
+	  }
+	  double norm = 1/static_cast<double>(nseeds*(nseeds-1));
+	  SE_1st.col(2) *= norm;
+	  SE_1st.col(2) = SE_1st.col(2).sqrt();
+	  SE_big1.col(2) *= norm;
+	  SE_big1.col(2) = SE_big1.col(2).sqrt();
+	  SE_all.col(2) *= norm;
+	  SE_all.col(2) = SE_all.col(2).sqrt();
+	}
+	
+	std::ofstream SE_1st_out("data/SE/SE_1");  
+	SE_1st_out<< SE_1st << '\n';
+	SE_1st_out.close();
+
+	std::ofstream SE_big1_out("data/SE/SE_>1");  
+	SE_big1_out<< SE_big1 << '\n';
+	SE_big1_out.close();
+	
+	std::ofstream SE_all_out("data/SE/SE_all");  
+	SE_all_out<< SE_all << '\n';
+	SE_all_out.close();
+	
+	//G0SEiw 1st
+	ArrayXXcd G0SEiw_1st(G0SEiw[0].rows(), 3);  // 0:omega, 1:average, 2:error
+	G0SEiw_1st << G0SEiw[0].col(0) , ArrayXXcd::Zero(G0SEiw[0].rows(), 2);   //tau
+	for (int i =0; i < nseeds ; i++)
+	  G0SEiw_1st.col(1) += G0SEiw[i].col(2);
+	G0SEiw_1st.col(1) /=  static_cast<double>(nseeds);
+	
+	//SE all
+	ArrayXXcd G0SEiw_all(G0SEiw[0].rows(), 3);  // 0:tau, 1:average, 2:error
+	G0SEiw_all << G0SEiw[0].col(0) , ArrayXXcd::Zero(G0SEiw[0].rows(), 2);   //tau
+	for (int i =0; i < nseeds ; i++)
+	  G0SEiw_all.col(1) += G0SEiw[i].col(1);
+	G0SEiw_all.col(1) /=  static_cast<double>(nseeds);
+
+	if (nseeds >3) {
+	  for (int i=0; i<nseeds; i++){
+		G0SEiw_1st.col(2) += (G0SEiw[i].col(2)-G0SEiw_1st.col(1)).pow(2);
+		G0SEiw_all.col(2) += (G0SEiw[i].col(1)-G0SEiw_all.col(1)).pow(2);
+	  }
+	  double norm = 1/static_cast<double>(nseeds*(nseeds-1));
+	  G0SEiw_1st.col(2) *= norm;
+	  G0SEiw_1st.col(2) = G0SEiw_1st.col(2).sqrt();
+	  G0SEiw_all.col(2) *= norm;
+	  G0SEiw_all.col(2) = G0SEiw_all.col(2).sqrt();
+	}
+
+	std::ofstream G0SEiw_1st_out("data/G0SEiw/G0SEiw_1");  
+	G0SEiw_1st_out<< G0SEiw_1st << '\n';
+	G0SEiw_1st_out.close();
+
+	std::ofstream G0SEiw_all_out("data/G0SEiw/G0SEiw_all");  
+	G0SEiw_all_out << G0SEiw_all << '\n';
+	G0SEiw_all_out.close();
+	  
+	
+// ------------------------------------------------------STATISTICS
 	std::ofstream uds_outfile("data/stats/uds_tot"); 
 	std::ofstream os_outfile("data/stats/os_tot");
 	std::ofstream ts_outfile("data/stats/ts_tot");
 	std::ofstream qs_outfile("data/stats/qs_tot");
+	std::ofstream taus_outfile("data/stats/taus_tot");
 	
 	uds_outfile << "Update Statistics" << '\n';
     uds_outfile << "*************************************" << '\n';
     uds_outfile << "COLUMNS" << '\n' << "1:ATTEMPTED" << '\n' << "2:POSSIBLE" << '\n' << "3:REJECTED" << '\n' << "4:ACCEPTED" << '\n' << "5:ACCEPTANCE RATIO POSSIBLE" << '\n' << "6:ACCEPTANCE RATIO TOTAL" << '\n';
     uds_outfile << "*************************************" << '\n';
-    uds_outfile << "CHANGE TAU: " << '\t' << uds_tot.topRows(1) << '\n' << "CT IN HO: " << '\t' << uds_tot.block(7, 0, 1, 6) << '\n' << "INSERT: " << '\t' << uds_tot.block(1, 0, 1, 6) << '\n' << "REMOVE: " << '\t' << uds_tot.block(2, 0, 1, 6) << '\n' << "SWAP:   " << '\t' << uds_tot.block(3, 0, 1, 6) << '\n'<< "SWAPoocc: " << '\t' << uds_tot.block(4, 0, 1, 6) << '\n'<< "SWAPoc: " << '\t' << uds_tot.block(5, 0, 1, 6) << '\n'<< "SWAPco: " << '\t' << uds_tot.block(6, 0, 1, 6) << '\n' << "DQ:      " << '\t' << uds_tot.block(8, 0, 1, 6)<< '\n' << "IAE:      " << '\t' << uds_tot.block(9, 0, 1, 6) << '\n' << "RAE :         " << '\t' << uds_tot.block(10, 0, 1, 6) << '\n' << '\n';
+    uds_outfile << "CHANGE TAU: " << '\t' << uds_tot.topRows(1) << '\n' << "CT IN HO: " << '\t' << uds_tot.block(7, 0, 1, 6) << '\n' << "INSERT: " << '\t' << uds_tot.block(1, 0, 1, 6) << '\n' << "REMOVE: " << '\t' << uds_tot.block(2, 0, 1, 6) << '\n' << "SWAP:   " << '\t' << uds_tot.block(3, 0, 1, 6) << '\n'<< "SWAPoocc: " << '\t' << uds_tot.block(4, 0, 1, 6) << '\n'<< "SWAPoc: " << '\t' << uds_tot.block(5, 0, 1, 6) << '\n'<< "SWAPco: " << '\t' << uds_tot.block(6, 0, 1, 6) << '\n' << "DQ:      " << '\t' << uds_tot.block(8, 0, 1, 6)<< '\n' << "IC:      " << '\t' << uds_tot.block(9, 0, 1, 6) << '\n' << "RC:         " << '\t' << uds_tot.block(10, 0, 1, 6) << '\n' << '\n';
 	
 	MatrixXd orderprint(os_tot.size(),2);
 	orderprint << ArrayXd::LinSpaced(config.get<int>("Order_Stat_Size"), 0, config.get<double>("Order_Stat_Size")-1), os_tot;
@@ -626,15 +728,24 @@ int main() {
 	ts_outfile << "Time Statistics [%]" << std:: endl;
 	ts_outfile << "CHANGE TAU:" << '\t' << ts_tot(0) << '\n' << "CT HO:     " << '\t' <<ts_tot(1)<< '\n' <<  "INSERT: " << '\t' << ts_tot(2) << '\n' << "REMOVE: " << '\t' << ts_tot(3) << '\n' <<  "SWAP:     " << '\t' << ts_tot(4) << '\n' << "DQ:      " << '\t' << ts_tot(5) << '\n' << "IAE:      " << '\t' << ts_tot(6) << '\n' << "RAE :       " << '\t' << ts_tot(7) << '\n' << "MEAS:       " << '\t' << ts_tot(8) << '\n' << "TEST:       " << '\t' << ts_tot(9) <<'\n';		
 	
-	MatrixXd qprint(qs_tot.size(),2);
-	qprint << ArrayXd::LinSpaced(config.get<int>("QStat_Size"), 0, config.get<double>("Q_Cutoff")), qs_tot;
+	ArrayXXd qprint(qs_tot.rows(),3);
+	qprint.col(0) = ArrayXd::LinSpaced(config.get<int>("QStat_Size"), 0, config.get<double>("Q_Cutoff"));
+	qprint.rightCols(2) << qs_tot;
 	qs_outfile << "Phonon Momentum Statistics" << '\n';
 	qs_outfile << qprint  << '\n';
+	
+	taus_outfile << "Tau Histogram" << '\n';
+	taus_outfile << taus_tot  << '\n';
 	
 	uds_outfile.close();
 	os_outfile.close();
 	ts_outfile.close();
 	qs_outfile.close();
+	taus_outfile.close();
+	
+	std::ofstream testhisto_of("data/stats/testhisto");
+	testhisto_of << testhisto << '\n';
+	testhisto_of.close();
 	
 #ifdef SECUMUL
 	ArrayXXd minmax_out(mins.size(), 7);

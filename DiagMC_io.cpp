@@ -1,62 +1,91 @@
 #include "DiagMC.h"
 
-/*
-void DiagMC::write() {
-  try {
-	ArrayXXd  output(taumap.taubin, 5);
-	
-	double CG0p = 0;
-	for (int i=0; i< taumap.taubin; i++) {
-	  CG0p += Data(i, 1);
-	  output(i, 0) = (static_cast<double>(i)+0.5)*taumap.taumax/static_cast<double>(taumap.taubin);
-	}
-	output.rightCols(4)=Data*(G0p/CG0p)*static_cast<double>(taumap.taubin)/taumap.taumax;
-  }
-  catch (std::exception& e) {
-	std::cerr << e.what() << std::endl;
-	exit(EXIT_FAILURE);
-  }
-}
-*/
-
-  
 ArrayXXd DiagMC::get_Data() {
-  ArrayXXd  output(taumap.taubin, 6);
+  ArrayXXd output(taumap.taubin, 6);
+  output.col(0) = taumap.print();    // Taus
 	
-  double CG0p = Data.col(1).sum()/fwzero/fwone;
-  output.col(0) = taumap.print();
-  output.rightCols(5) = taumap.norm_table().replicate<1,5>();
-  output.col(2) /= (fwzero*fwone);
-  output.col(3) /= fwone;
-
+  double CG0p = Data.col(1).sum();  //counts in 0 Order
+  output.rightCols(5) = taumap.norm_table().replicate<1,5>();   // delta T pro bin
+  output.rightCols(5) *= Data/CG0p; 
+#ifndef SELFENERGY
+  output.rightCols(5)*=G0p;   //In the case of Green Sampling we add the last G0 to the data
+#endif
+   
+  //Zero Order
 #ifdef SELFENERGY
-//if for how to reweight the data
-#ifdef MEASREWEIGHT
-  output.rightCols(5)*=Data*(G0p/CG0p);
-#else
-//Copy everything  
-  output.rightCols(5)*=Data*(1./CG0p);
-  
-//Reweights and Norms  
-  //zero order (fake check)
   output.col(2)*= G0p;
-#ifndef FOG0SE
-  //first order  G0SEG0
-  output.col(3)*= G0p; 
-#endif
-  
-#ifdef SIGMA
-  //Orders >2 we measure just SE
-  //all_orders
-  output.col(1) /= G0p;
-  //2nd orders
-  output.rightCols(2) /= G0p;
-#endif
-    
 #endif
 
-#else
-  output.rightCols(5)*=Data*(G0p/CG0p);
-#endif	
+   //First Order
+#ifdef SELFENERGY
+  if (fog0seg0) { // if you want to sample g0seg0 in Selfenergy sampling
+	output.col(3)*= G0p; 
+  }
+#endif
+
   return output;	
+}
+
+//Polaron Energy Estimator
+ArrayXXd DiagMC::get_Eptest() {
+  ArrayXXd output = Epol;
+  for (int i=0 ; i< Epol.cols() ; i++) {
+	output.col(i+1) *= taumap.norm_table();
+  }
+  return output /G0p/ Data.col(1).sum();
+}
+
+ArrayXd DiagMC::get_Ep() {
+  ArrayXXd output = Epol;
+#ifdef SECUMUL
+  return output.colwise().sum() / G0p *pref_calc();
+#else
+  return output.colwise().sum() /G0p /Data.col(1).sum();
+#endif
+}
+
+//Self Energy Estimator
+ArrayXXd DiagMC::get_SE() {
+  ArrayXXd output(taumap.taubin, SE.cols()+1);
+  output.col(0) = taumap.print();
+#ifdef SECUMUL
+  output.rightCols(SE.cols()) = SE /G0p *pref_calc();
+#else
+  output.rightCols(SE.cols()) = SE /G0p /Data.col(1).sum();
+#endif
+  for (int i=0 ; i< SE.cols() ; i++) {
+	output.col(i+1) *= taumap.norm_table();
+  }
+  return output;
+}
+
+//G0SE in Matsubara
+ArrayXXcd DiagMC::get_G0SEiw() {
+  ArrayXXcd output(wbin, G0SEiw.cols()+1);
+  for (int it =0; it<wbin; it++) {
+	output(it,0) = static_cast<double>(it)/static_cast<double>(wbin)*wmax;
+  }
+#ifdef SECUMUL
+  output.rightCols(G0SEiw.cols()) = G0SEiw /G0p *pref_calc();
+#else
+  output.rightCols(G0SEiw.cols()) = G0SEiw /G0p /Data.col(1).sum();
+#endif
+  return output;  
+}
+
+
+
+//tau Histogram
+ArrayXXd DiagMC::get_taus() {
+  ArrayXXd output(taumap.taubin, tstat.cols()+1);
+  output.col(0) = taumap.print();
+  output.rightCols(tstat.cols()) = tstat;
+  for (int i=0 ; i< tstat.cols() ; i++) {
+	output.col(i+1) *= taumap.norm_table();
+  }
+  return output;
+}
+
+ArrayXXd DiagMC::get_testhisto() {
+  return testhisto;
 }

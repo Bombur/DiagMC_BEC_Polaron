@@ -2,7 +2,7 @@
    
 void DiagMC::test() {
   try{
-	
+	diag.printall();
 	//SECUMUL
 #ifdef SECUMUL
 	if(ordstsz < 1) {throw ossoor();}
@@ -22,7 +22,7 @@ void DiagMC::test() {
 		throw  greenerr();}
 #endif	  
 #else
-	  if (Data(i, 0)< (Data(i, 1) + Data(i, 2) + Data(i, 4)- 0.0000001)) {
+	  if (Data(i, 0)< (Data(i, 1) + Data(i, 2) + Data(i, 4)- 0.000001)) {
 		  std::cout << Data.topRows(20)<< std::endl;
 		throw  greenerr();}
 	  
@@ -120,7 +120,7 @@ void DiagMC::printall(){
   }
   std::cout<<'\n' << CG0p <<std::endl;
 */
-  std::cout << Prem << '\t' << Pins << '\t'<< Pct << '\t'<< Pctho << '\t'<< Psw << '\t'<< Pdq << '\t'<< Piae << '\t'<< Prae<<'\n' <<std::endl;
+  std::cout << Prem << '\t' << Pins << '\t'<< Pct << '\t'<< Pctho << '\t'<< Psw << '\t'<< Pdq << '\t'<< Pic << '\t'<< Prc<<'\n' <<std::endl;
   std::cout << drnd() <<'\n' <<std::endl;
   std::cout << Meas_its << '\t' << Test_its << '\t'<< Write_its << '\n'; 
   std::cout << RunTime <<'\n' <<std::endl;

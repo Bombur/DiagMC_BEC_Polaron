@@ -65,15 +65,11 @@ class Diagram {
 
 	//proposing
 	void random_arc();
-	int propose_insert(const double & dqins, const double & sigfac);
-	int propose_remove(const double & dqins);
 	int propose_swap();
-	int propose_ct(const double & taumax, const double & ctcor);
 	int propose_dq(const double & qcor);
-	int propose_insatend(const double & taumax, const double & dtins, const double & dqins);
-	int propose_rematend(const double & dtins, const double & dqins);
+	void linear_q(const double & dqins);
+	void gauss_q(const double & sigma, const double & dqins);
 	
-
 	//changes
 	void insert();
 	void remove();
@@ -81,8 +77,8 @@ class Diagram {
 	void swap();
 	void ct();
 	void dq();
-	void insatend();
-	void rematend();
+	void inscrossed();
+	void remcrossed();
 	
 	//tests
 	void test(const double & qc);

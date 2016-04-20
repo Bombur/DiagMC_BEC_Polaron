@@ -1,60 +1,42 @@
 #include "DiagMC.h"
 
-//Propagators
-#ifdef FP
-double DiagMC::G0el(const std::array< double, 3 > & p, const double & tfin, const double & tinit) {
-  return exp(-((vsq(p)/2.) - mu)*(tfin-tinit));
-}
-
-double DiagMC::Dph(const std::array< double, 3> & q, const double & tfin, const double & tinit) {
-  return exp((-wp)*(tfin-tinit));
-}
-
-double DiagMC::Vq2(const std::array< double, 3> & q) {
-  double pref =  alpha*2.*sqrt(2.)*M_PI;
-  return pref/vsq(q);  
-}
-#endif
-
-#ifdef BEC
-double DiagMC::G0el(const std::array< double, 3 > & p, const double & tfin, const double & tinit) {
-  return exp(-((vsq(p)/2. * sqrt(2.) /relm) - mu)*(tfin-tinit));
-}
-
-double DiagMC::Dph(const std::array< double, 3> & q, const double & tfin, const double & tinit) {
-  double omega = sqrt(vsq(q) *(1.+(vsq(q)/2.)));
-  return exp((-omega)*(tfin-tinit));
-}
-
-double DiagMC::Vq2(const std::array< double, 3> & q) {
-  return alpha *M_PI * (1.+ 1./relm)*(1. + 1./relm)* sqrt(vsq(q)/(vsq(q)+2.));   
-}
-#endif
-
 //Estimators
+//Polaron Energy
 void DiagMC::meas_Epol(const double & cor){
   double Eptau = diag.get_tinit(2*diag.get_order()) - diag.get_tinit(1);
   if (diag.get_order() == 1) {
-	Epol.row(taumap.bin(Eptau)) += ((ws*Eptau - mu*Eptau).exp() *cor/fwone);
-
+	//Epol.row(taumap.bin(Eptau)) += ((ws*Eptau - mu*Eptau).unaryExpr(std::ptr_fun(expfun)) *cor/fwone);
   } else {
-	Epol.row(taumap.bin(Eptau)) += ((ws*Eptau - mu*Eptau).exp() *cor);
+	//std::cout << Eptau << '\t' << taumap.bin(Eptau) << '\n' << Epol << std::endl;
+	Epol.row(taumap.bin(Eptau)) += ((ws*Eptau - mu*Eptau).unaryExpr(std::ptr_fun(expfun)) *cor);
   }
 }
 
-ArrayXXd DiagMC::get_Eptest() {
-  ArrayXXd output = Epol;
-  for (int i=0 ; i< Epol.cols() ; i++) {
-	Epol.col(i) *= taumap.norm_table();
+//Self Energy
+void DiagMC::meas_SE(const double & cor){
+  double SEtau = diag.get_tinit(2*diag.get_order()) - diag.get_tinit(1);
+  if (diag.get_order() == 1) {
+	SE(taumap.bin(SEtau), 0) += (cor/fwone); //all Sigma
+	SE(taumap.bin(SEtau), 1) += (cor/fwone); //Sigma order ==1
+
+  } else if (diag.get_order() > 1){
+	SE(taumap.bin(SEtau), 0) += cor; //all Sigma
+	SE(taumap.bin(SEtau), 2) += cor; //Sigma Order >1
   }
-  return output /G0p/ Data.col(1).sum() * fwzero *fwone;
 }
 
-ArrayXd DiagMC::get_Ep() {
-  ArrayXXd output = Epol;
-#ifndef SECUMUL
-  return output.colwise().sum() / G0p / Data.col(1).sum()*fwzero*fwone;
-#else
-  return output.colwise().sum() / G0p *pref_calc();
-#endif
+//G0SE in Matsubara
+void DiagMC::meas_G0SEiw(const double & cor){
+  double G0SEtau = diag.get_tinit(2*diag.get_order());
+  const std::complex<double> i(0, 1);
+  if (diag.get_order() ==1) {
+	for (int it = 0; it < wbin; it ++) {
+	  G0SEiw(it, 0) += cor/fwone * std::exp((i * static_cast<double>(it)/static_cast<double>(wbin)*wmax) * G0SEtau);
+	  G0SEiw(it, 1) += cor/fwone * std::exp((i * static_cast<double>(it)/static_cast<double>(wbin)*wmax)* G0SEtau);
+	}
+  } else if (diag.get_order() >1){
+	for (int it = 0; it < wbin; it ++) {
+	  G0SEiw(it, 0) += cor * std::exp((i * static_cast<double>(it)/static_cast<double>(wbin)*wmax) * G0SEtau);
+	}
+  }
 }
