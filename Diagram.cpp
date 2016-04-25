@@ -90,18 +90,18 @@ void Diagram::gauss_q(const double& sigma, const double & dqins) {
 
 
 int Diagram::propose_swap() {
-  random_arc();
+  //Fast Rejections
   if (order == 0) {return -1;}
+  random_arc();
   if (pr_arc == 0 || times[pr_arc+1].link == 0) {return -1;} // first and second last
-  
   if (times[pr_arc].link == (pr_arc+1)) {return -1;} //small loop
   
+  //Taus
   pr_tauin = times[pr_arc].t;   // get_tinit(pr_arc);
   pr_taufin = times[pr_arc+1].t ;  // get_tfin(pr_arc);
   
   
   pr_p = elprop[pr_arc -1] + elprop[pr_arc+1] - elprop[pr_arc];  
-  
   pr_q= elprop[0] - pr_p ; 
   
   
@@ -110,36 +110,20 @@ int Diagram::propose_swap() {
 #ifdef SELFENERGY
 	if (vsq(pr_p - elprop[0]) < 0.00000000001) {return -1;} // check to not open SE Diagram
 #endif
-	return -2;
+	return 0;
   }
   //first closing second opening
   else if (((times[pr_arc].link) < pr_arc) && ((times[pr_arc+1].link) > (pr_arc + 1)) ) {
-	return 2;
+	return 1;
   }
-  else {
-	return 0;	
+  //opening opening
+  else if (((times[pr_arc].link) > pr_arc) && ((times[pr_arc+1].link) > (pr_arc + 1)) ) {
+	return 2;	
   }
-}
-
-
-int Diagram::propose_dq(const double & qcor) {
-	if (order == 0) {return -1;}
-	random_arc(); 
-	if (pr_arc == 0) {return -1;}
-	if (times[pr_arc].link < pr_arc) {
-	  pr_arc = times[pr_arc].link;
-	}
-	
-	pr_tauin = times[pr_arc].t;   //get_tinit(pr_arc);			
-	pr_taufin = times[times[pr_arc].link].t;   //get_tinit(get_link(pr_arc));
-	
-	pr_q[0] = (drnd()-0.5)* qcor;		//qx	
-	pr_q[1] = (drnd()-0.5)* qcor;		//qy
-	pr_q[2] = (drnd()-0.5)* qcor;		//qz
-	
-	pr_p.fill(0.);
-	
-	return 0;
+  //closing closing
+  else if (((times[pr_arc].link) < pr_arc) && ((times[pr_arc+1].link) < (pr_arc + 1)) ) {
+	return 3;	
+  }
 }
 
 
@@ -208,7 +192,7 @@ void Diagram::swap() {
 
 
 void Diagram::ct() {
-  times[pr_arc].t= pr_tau1.t;
+  times[pr_arc].t= pr_tau2.t;
 }
 
 void Diagram::dq() {

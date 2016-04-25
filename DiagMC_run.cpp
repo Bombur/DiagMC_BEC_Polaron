@@ -66,11 +66,12 @@ int main() {
 	std::vector<ArrayXXcd> G0SEiw(nseeds, ArrayXXcd::Zero(config.get<int>("Omega_bin"), 3)); 
 
 	ArrayXXd uds_tot = ArrayXXd::Zero(11,6);
+	ArrayXXd ofs_tot = ArrayXXd::Zero(11,6);
 	ArrayXd os_tot = ArrayXd::Zero(config.get<int>("Order_Stat_Size"));
 	ArrayXd ts_tot = ArrayXd::Zero(10);
 	ArrayXXd qs_tot = ArrayXXd::Zero(config.get<int>("QStat_Size"), 2);
 	ArrayXXd taus_tot = ArrayXXd::Zero(bintemp[bintemp.size()-1], 5); // Tau Histogram
-	ArrayXXd testhisto = ArrayXXd::Zero(2*bintemp[bintemp.size()-1]+2, 2);
+	ArrayXXd testhisto = ArrayXXd::Zero(bintemp[bintemp.size()-1]+2, 4);
 	
 	  
 #ifdef SECUMUL
@@ -213,7 +214,7 @@ int main() {
 			
 		  if ((it%bec->Meas_its) ==0) {
 			steady_clock::time_point t_meas_be= steady_clock::now();
-			bec->meas_histo(); 
+			//bec->meas_histo(); 
 			meas += bec->measure();
 			steady_clock::time_point t_meas_end = steady_clock::now();
 			timestat(8) += static_cast<double>((t_meas_end-t_meas_be).count())* steady_clock::period::num / steady_clock::period::den ;
@@ -221,7 +222,7 @@ int main() {
 			
 		  if ( (it%bec->Test_its) ==0) {
 			steady_clock::time_point t_test_be= steady_clock::now();
-			//bec->meas_histo(); 
+			bec->meas_histo(); 
 			try{
 			  bec->test();
 #ifdef SELFENERGY
@@ -234,8 +235,8 @@ int main() {
 			  exit(EXIT_FAILURE);
 			}
 			std::cout << "# Test ok thread " << seed << std::endl;
-			
 			steady_clock::time_point t_test_end = steady_clock::now();
+			//exit(EXIT_FAILURE);
 			timestat(9) += static_cast<double>((t_test_end-t_test_be).count())* steady_clock::period::num / steady_clock::period::den ;
 		  }
 		  
@@ -247,8 +248,9 @@ int main() {
 		  	steady_clock::time_point dt_end = steady_clock::now();
 			dt = static_cast<double>(duration_cast<seconds>(dt_end-dt_be).count());
 			
-			speed = static_cast<double>(it)/nseconds;
+			speed = static_cast<double>(it)/dt;
 			std::cout << "# " << seed<<  ": Time on core  " << nseconds << '\t' << "dt  " << dt << '\t' << "speed [its/s]: " << speed << '\n' << std::endl;
+			it = 0;
 			dt_be = steady_clock::now();
 		  }	
 		  it++;
@@ -266,6 +268,7 @@ int main() {
 		  SE[seed] = bec->get_SE();
 		  G0SEiw[seed] = bec->get_G0SEiw();
 		  uds_tot += bec->get_uds();
+		  ofs_tot += bec->get_ofs();
 		  os_tot += bec->get_os();
 		  ts_tot += timestat;
 		  qs_tot += bec->get_qs();
@@ -317,6 +320,7 @@ int main() {
 		  G0SEiw[seed].rightCols(tmp2.cols()-1) += tmp2.rightCols(tmp2.cols()-1);
 		  G0SEiw[seed].col(0) = tmp2.col(0); 
 		  uds_tot += bec->get_uds();
+		  ofs_tot += bec->get_ofs();
 		  os_tot += bec->get_os();
 		  ts_tot += timestat;
 		  qs_tot += bec->get_qs();
@@ -434,8 +438,12 @@ int main() {
 	  }
 	
 	//Eptest /= static_cast<double>(nseeds);
+	uds_tot /= static_cast<double>(nseeds);
+	ofs_tot /= static_cast<double>(nseeds);
 	uds_tot.col(4)=uds_tot.col(3)/uds_tot.col(1);
 	uds_tot.col(5)=uds_tot.col(3)/uds_tot.col(0);
+	ofs_tot.col(4)=ofs_tot.col(2)/uds_tot.col(2);
+	ofs_tot.col(5)=ofs_tot.col(3)/uds_tot.col(3);
 	os_tot/=  static_cast<double>(nseeds);
 	ts_tot /= onecore_time;
 	qs_tot /= static_cast<double>(nseeds);
@@ -708,16 +716,48 @@ int main() {
 	
 // ------------------------------------------------------STATISTICS
 	std::ofstream uds_outfile("data/stats/uds_tot"); 
+	std::ofstream ofs_outfile("data/stats/ofs_tot"); 
 	std::ofstream os_outfile("data/stats/os_tot");
 	std::ofstream ts_outfile("data/stats/ts_tot");
 	std::ofstream qs_outfile("data/stats/qs_tot");
 	std::ofstream taus_outfile("data/stats/taus_tot");
 	
+	std::string udcols[] = {"ATTEMPTED", "POSSIBLE", "REJECTED", "ACCEPTED", "ACCEPTANCE RATIO POSSIBLE", "ACCEPTANCE RATIO TOTAL"};
+	std::string udrows[] = {"CHANGE TAU", "INSERT", "REMOVE", "SWAP", "SWAPoc", "SWAPco", "SWAPoocc", "CT in HO", "DQ", "IC", "RC"};
+
+	
 	uds_outfile << "Update Statistics" << '\n';
     uds_outfile << "*************************************" << '\n';
-    uds_outfile << "COLUMNS" << '\n' << "1:ATTEMPTED" << '\n' << "2:POSSIBLE" << '\n' << "3:REJECTED" << '\n' << "4:ACCEPTED" << '\n' << "5:ACCEPTANCE RATIO POSSIBLE" << '\n' << "6:ACCEPTANCE RATIO TOTAL" << '\n';
+    uds_outfile << "COLUMNS" << '\n';
+	int it =0;
+	for (auto name : udcols){
+	  uds_outfile << it<<":"<< name << '\n';
+	  it++;
+	}
     uds_outfile << "*************************************" << '\n';
-    uds_outfile << "CHANGE TAU: " << '\t' << uds_tot.topRows(1) << '\n' << "CT IN HO: " << '\t' << uds_tot.block(7, 0, 1, 6) << '\n' << "INSERT: " << '\t' << uds_tot.block(1, 0, 1, 6) << '\n' << "REMOVE: " << '\t' << uds_tot.block(2, 0, 1, 6) << '\n' << "SWAP:   " << '\t' << uds_tot.block(3, 0, 1, 6) << '\n'<< "SWAPoocc: " << '\t' << uds_tot.block(4, 0, 1, 6) << '\n'<< "SWAPoc: " << '\t' << uds_tot.block(5, 0, 1, 6) << '\n'<< "SWAPco: " << '\t' << uds_tot.block(6, 0, 1, 6) << '\n' << "DQ:      " << '\t' << uds_tot.block(8, 0, 1, 6)<< '\n' << "IC:      " << '\t' << uds_tot.block(9, 0, 1, 6) << '\n' << "RC:         " << '\t' << uds_tot.block(10, 0, 1, 6) << '\n' << '\n';
+	it =0;
+	for (auto name : udrows){
+	  uds_outfile << name << ": " <<'\t'<< uds_tot.block(it, 0, 1, 6) << '\n';
+	  it++;
+	}
+    uds_outfile << '\n';
+    
+    std::string ofcols[] = {"OVERFLOW", "UNDERFLOW", "REJECTED BY FLOWERROR", "ACCEPTED BY FLOWERROR", "RELATIVE REJECTION" , "RELATIVE ACCEPTANCE"};
+	ofs_outfile << "Overflow Statistics" << '\n';
+    ofs_outfile << "*************************************" << '\n';
+    ofs_outfile << "COLUMNS" << '\n';
+	it =0;
+	for (auto name : ofcols){
+	  ofs_outfile << it<<":"<< name << '\n';
+	  it++;
+	}
+    ofs_outfile << "*************************************" << '\n';
+	it =0;
+	for (auto name : udrows){
+	  ofs_outfile << name << ": " <<'\t'<< ofs_tot.block(it, 0, 1, 6) << '\n';
+	  it++;
+	}
+    ofs_outfile << '\n';
 	
 	MatrixXd orderprint(os_tot.size(),2);
 	orderprint << ArrayXd::LinSpaced(config.get<int>("Order_Stat_Size"), 0, config.get<double>("Order_Stat_Size")-1), os_tot;
@@ -725,8 +765,13 @@ int main() {
 	os_outfile << "Order Statistics" << '\n';
 	os_outfile << orderprint  << '\n';
 	
+	std::string tsrows[] = {"CHANGE TAU", "CT in HO", "INSERT", "REMOVE", "SWAP", "DQ", "IC", "RC", "MEAS", "TEST"};
 	ts_outfile << "Time Statistics [%]" << std:: endl;
-	ts_outfile << "CHANGE TAU:" << '\t' << ts_tot(0) << '\n' << "CT HO:     " << '\t' <<ts_tot(1)<< '\n' <<  "INSERT: " << '\t' << ts_tot(2) << '\n' << "REMOVE: " << '\t' << ts_tot(3) << '\n' <<  "SWAP:     " << '\t' << ts_tot(4) << '\n' << "DQ:      " << '\t' << ts_tot(5) << '\n' << "IAE:      " << '\t' << ts_tot(6) << '\n' << "RAE :       " << '\t' << ts_tot(7) << '\n' << "MEAS:       " << '\t' << ts_tot(8) << '\n' << "TEST:       " << '\t' << ts_tot(9) <<'\n';		
+	it =0;
+	for (auto name :tsrows) {
+	  ts_outfile << name << ": " << '\t' << ts_tot(it) << '\n';
+	  it +=1;
+	}
 	
 	ArrayXXd qprint(qs_tot.rows(),3);
 	qprint.col(0) = ArrayXd::LinSpaced(config.get<int>("QStat_Size"), 0, config.get<double>("Q_Cutoff"));
@@ -738,6 +783,7 @@ int main() {
 	taus_outfile << taus_tot  << '\n';
 	
 	uds_outfile.close();
+	ofs_outfile.close();
 	os_outfile.close();
 	ts_outfile.close();
 	qs_outfile.close();
@@ -764,7 +810,7 @@ int main() {
 	minmax_outfile.close();
 #endif	
 	
-	 std::cout << "# Analysing data, result = " << system(config.get<std::string>("Ana_File").c_str()) << std::endl;
+	std::cout << "# Analysing data, result = " << system(config.get<std::string>("Ana_File").c_str()) << std::endl;
   
 	return 0;
 }

@@ -1,4 +1,4 @@
-DEFS = -DFP
+DEFS = -DFP -DSELFENERGY -DSECUMUL
 
 SHELL = /bin/sh
 

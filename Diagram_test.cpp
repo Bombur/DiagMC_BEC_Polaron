@@ -27,7 +27,7 @@ void Diagram::test(const double & qc) {
 	}
 	for (int i=0; i<(2*order)+1; i++) {
 
-	  if (times[i].t > times[i+1].t) {throw timeserr();}
+	  if (times[i].t >= times[i+1].t) {throw timeserr();}
 #ifndef NCHECK
 	  if (vsq(get_p(i)+ get_q(i) - get_p(0)) > 0.0000001)  {throw momerr();}
 #endif

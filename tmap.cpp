@@ -76,7 +76,7 @@ int tmap::bin(const double & tau) {
   } 
   //assert(lower->second == upper->second);
 #endif
-  assert(lower->first>0 && upper->first<taubin);
+  assert(upper->first>0 && upper->first<taubin);
   
   return std::prev(upper,1)->second;  
 }

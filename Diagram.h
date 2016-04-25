@@ -66,7 +66,6 @@ class Diagram {
 	//proposing
 	void random_arc();
 	int propose_swap();
-	int propose_dq(const double & qcor);
 	void linear_q(const double & dqins);
 	void gauss_q(const double & sigma, const double & dqins);
 	

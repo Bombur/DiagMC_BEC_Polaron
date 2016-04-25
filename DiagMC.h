@@ -13,7 +13,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-  
+ 
 //random
 #include <random>
 #include "/project/theorie/h/H.Guertner/lib/pcg/include/pcg_random.hpp"
@@ -53,7 +53,6 @@ class DiagMC {
 	const int wbin; 
 	double E;
 	double G0p;				//Green's Function G0(p)
-	double qsigma;
 #ifndef SECUMUL
 	const int maxord;				//maximum order
 #else
@@ -82,7 +81,9 @@ class DiagMC {
 	const double fw;  			// fake weight (correction for G0) 
 	const double fwzero; 		//fake weight for zero order
 	const double fwone;		//fake weight for order <=1	
-	const double sigfac;		//factor for sigma of Gauss distribution for choosing q
+	const int qsigma; //sigma for Q selection
+	const double explim;  // limit for exponential function Overflow and Underflow
+	const int doitlim; //limit for iterations in do while loops
 
 	//Cumulative SE Calculation
 	int minord; // minimum Order (Norm Order)
@@ -96,8 +97,9 @@ class DiagMC {
 	std::vector<double> nends; // counts of being in end Diagrams
 #endif
 			
-	//rows of stats: 0:change tau, 1:insert, 2:remove 3:swap, 4:swapoocc, 5:swapoc, 6:swapco, 7:ct_ho, 8:dq , 9:insatend, 10: rematend
-	ArrayXXd  updatestat; 		//0:attempted, 1:possible, 2:rejected, 3:accepted, 4:acceptance ratio possible, 5:acceptance ratio total
+	//rows of stats: 0:change tau, 1:insert, 2:remove 3:swap, 4:swapoc, 5:swapco, 6:swapoocc, 7:ct_ho, 8:dq , 9:inscrossed, 10: remcrossed
+	ArrayXXd  updatestat; 		//0:attempted, 1:possible, 2:rejected, 3:accepted, 4:acceptance ratio possible, 5:acceptance ratio total  
+	ArrayXXd overflowstat;  //0:Overflow, 1:Underflow, 2:rejected, 3:accepted, 4:rejected ratio rejected, 5:acceptance ratio accepted
 	ArrayXd orderstat;
 	ArrayXXd qstat;		//0:all Orders, 1: 1st_Order
 	ArrayXXd tstat;		//Length of Propergator 0:all Orders, 1: 1st reducible, 2:Rainbow, 3:crossed
@@ -112,8 +114,10 @@ class DiagMC {
 	//Bools instead of Pragmas
 	const bool fog0seg0;
 	const bool ct_taucut;
-	const bool ins_taucut;
+	const bool ct_lin;
+	const bool ins_tau2cut;
 	const bool ins_tau2lin;
+	const bool ic_taulin;
 	const bool ic_taucut;
 
 	std::string lu;				//last update for error message
@@ -187,12 +191,13 @@ class DiagMC {
 	ArrayXXcd get_G0SEiw();
 	
 	ArrayXXd get_uds() {return updatestat;}
+	ArrayXXd get_ofs() {return overflowstat;}
 	ArrayXd get_os() {return orderstat;}
 	ArrayXXd get_qs() {return qstat;}
 	ArrayXXd get_taus();
 	ArrayXXd get_testhisto();
   
-	 
+	
 	//DiagMC_test.cpp
 	void test(); 
 	double weight_calc();

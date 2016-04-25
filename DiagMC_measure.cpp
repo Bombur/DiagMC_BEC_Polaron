@@ -37,7 +37,6 @@ int DiagMC::measure() {
 #endif
 	double tmp = Data.col(2).sum();
 	Data(bintau, 2) += cor/fwone; //First Order container
-	assert(fabs(tmp+1 - Data.col(2).sum())< 0.0001);
   }
   
   
@@ -49,7 +48,7 @@ int DiagMC::measure() {
 	if (vsq(diag.get_p(1)-diag.get_p(3)) < 0.00000000000001){
 	  Data(bintau, 3) += cor;
 	} else {
-	//Not Rainbow
+	//Crossed
 	  Data(bintau, 4) += cor;
 	}
 #else // Greens Sampling
@@ -57,8 +56,10 @@ int DiagMC::measure() {
 	//reducible 
 	if (reduc) {
 	  Data(bintau, 3) += cor;
+	} else if (!(vsq(diag.get_p(1)-diag.get_p(3)) < 0.00000000000001)) {
+	  //crossed
+	  Data(bintau, 4) += cor;
 	}
-	Data(bintau, 4) += cor;
 #endif
   }
   
@@ -112,7 +113,10 @@ int DiagMC::measure() {
   }
 #endif
 
-
+//Tests
+//for (int vert=1; vert<(2*diag.get_order()+1); vert++){
+  //if (diag.get_link(vert+1) == (vert-1)) {testhisto(taumap.bin(diag.get_tfin(vert)- diag.get_tinit(vert)),2)+=1;}
+//}
 //Orderstats
   if (cur_order < orderstat.size()){
 	orderstat(cur_order) +=1;

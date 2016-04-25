@@ -2,7 +2,8 @@
    
 void DiagMC::test() {
   try{
-	diag.printall();
+	//std::cout << lu <<std::endl;
+	//diag.printall();
 	//SECUMUL
 #ifdef SECUMUL
 	if(ordstsz < 1) {throw ossoor();}
@@ -33,7 +34,7 @@ void DiagMC::test() {
 	double weight_diff = fabs(weight_calc() - global_weight);
 	if (weight_diff > (0.0000001*global_weight)){
 	  std::cerr << weight_diff << '\t' << weight_calc() << '\t' << global_weight << std::endl;  
-	  std::cerr << "Warning! Weight Check would fail in Order" << diag.get_order() <<"!" <<std::endl;
+	  std::cerr << "Warning! Weight Check would fail in Order " << diag.get_order() <<"!" <<std::endl;
 	}
 	
 
@@ -54,13 +55,13 @@ void DiagMC::test() {
 double DiagMC::weight_calc() {
   double weight = G0el(diag.get_p(0), diag.get_tfin(0), 0.);  //G0(p, t1, 0)
   
+  
   for (int i=1; i< 1+2*diag.get_order(); i++) {
 	weight *= G0el(diag.get_p(i), diag.get_tfin(i), diag.get_tinit(i));   //G0(pi, ti+1, ti)
 	if (diag.get_link(i) > i) { //opening of an arc
 	  std::array<double, 3> q = diag.get_p(i-1)-diag.get_p(i);
 	  weight *= Dph(q, diag.get_tinit(diag.get_link(i)), diag.get_tinit(i));	//Dph
 	  weight *= Vq2(q);			//
-	  //weight /= pow(2*M_PI,3);
 	}
   }
   
@@ -90,7 +91,6 @@ void DiagMC::printall(){
   std::cout << dtins <<'\n';
   std::cout << dqins <<'\n';
   std::cout << fw <<'\n';
-  std::cout << sigfac <<'\n';
   std::cout <<'\n';
   
   std::cout << minord <<'\n';
