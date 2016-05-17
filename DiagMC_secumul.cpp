@@ -13,15 +13,22 @@ void DiagMC::ord_step() {
   Ends = ArrayXd::Zero(taumap.taubin);
    
   Epol = ArrayXXd::Zero(taumap.taubin, ws.size());
-  SE = ArrayXXd::Zero(taumap.taubin, 3);
-  G0SEiw = ArrayXXcd::Zero(wbin, 2);
+  SE = ArrayXXd::Zero(taumap.taubin, SE.cols());
+  G0SEiw = ArrayXXcd::Zero(wbin, G0SEiw.cols());
   
   updatestat = ArrayXXd::Zero(updatestat.rows(),updatestat.cols());
   orderstat = ArrayXd::Zero(orderstat.size());
-  qstat = ArrayXXd::Zero(qstat.rows(),2);
-  tstat = ArrayXXd::Zero(taumap.taubin,2);
+  qstat = ArrayXXd::Zero(qstat.rows(),qstat.cols());
+  tstat = ArrayXXd::Zero(taumap.taubin,tstat.cols());
 
   diag.capacity_check();
+  
+  if (desi_ordrat>0) {
+	fw = 1.;
+	fw_counts.fill(0.);
+	fw_last[0] = 0;
+	fw_last[1] = 0;
+  }
 }
 
 double DiagMC::normcalc() {
@@ -54,8 +61,6 @@ double DiagMC::pref_calc(){
 	pref /= nnorms[i+1];
   }
   pref /= nnorms[0];
-  pref *= fwzero; 
-  pref *= fwone;
   return pref;
 }
   
@@ -73,7 +78,28 @@ ArrayXd DiagMC::get_EndDiag(){
 }
 
 
-
+//Each time write() is called this function checks the ratio between the counts in minimum and maximum order and changes the fake weight according to the desired ratio 
+int DiagMC::fw_adapt(){
+  assert(((orderstat(minord) - fw_last[0]) != 0) || ((orderstat(maxord) - fw_last[1]) != 0));
+  fw_counts[0] = static_cast<double>(orderstat[minord]);
+  fw_counts[1] += static_cast<double>(orderstat[maxord]-fw_last[1]); ///pow(fw, static_cast<double>(maxord-minord));
+  if ((orderstat[minord] - fw_last[0])  == 0) {fw /= fw_max;}
+  else if ((orderstat[maxord] - fw_last[1]) == 0) {fw *= fw_max;}
+  else {
+	double max_min_rat = fw_counts[1]/fw_counts[0]; //static_cast<double>(orderstat[maxord] - fw_last[1])/static_cast<double>(orderstat[minord] - fw_last[0]);
+	double fw_new =  pow(1./max_min_rat*desi_ordrat, 1./static_cast<double>(maxord-minord));
+	if ((fw_new/fw) > fw_max) {fw *= fw_max;} 
+	else if ((fw/fw_new) > fw_max) {fw /= fw_max;} 
+	else {fw *= fw_new;}
+	std::cout << "Fake Weight Control!"  << '\n';
+	std::cout << fw << '\t' << orderstat[maxord]/orderstat[minord]<< '\t' << orderstat[minord] << '\t' <<orderstat[maxord] <<std::endl;
+	std::cout << fw_counts << '\t' << fw_last <<std::endl;
+  }  
+  
+  fw_last[0] = orderstat[minord];
+  fw_last[1] = orderstat[maxord];
+  return 1;
+}
 
 
 

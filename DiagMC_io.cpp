@@ -6,20 +6,20 @@ ArrayXXd DiagMC::get_Data() {
 	
   double CG0p = Data.col(1).sum();  //counts in 0 Order
   output.rightCols(5) = taumap.norm_table().replicate<1,5>();   // delta T pro bin
-  output.rightCols(5) *= Data/CG0p; 
-#ifndef SELFENERGY
-  output.rightCols(5)*=G0p;   //In the case of Green Sampling we add the last G0 to the data
+  output.rightCols(5) *= Data/CG0p *G0ptmima; 
+#ifdef SELFENERGY
+  output.rightCols(5)/=G0p1arm;   //In the case of Green Sampling we add the last G0 to the data
 #endif
    
   //Zero Order
 #ifdef SELFENERGY
-  output.col(2)*= G0p;
+  output.col(2)*= G0p1arm;
 #endif
 
    //First Order
 #ifdef SELFENERGY
   if (fog0seg0) { // if you want to sample g0seg0 in Selfenergy sampling
-	output.col(3)*= G0p; 
+	output.col(3)*= G0p1arm; 
   }
 #endif
 
@@ -32,15 +32,15 @@ ArrayXXd DiagMC::get_Eptest() {
   for (int i=0 ; i< Epol.cols() ; i++) {
 	output.col(i+1) *= taumap.norm_table();
   }
-  return output /G0p/ Data.col(1).sum();
+  return output *(G0ptmima/G0p2arms) / Data.col(1).sum();
 }
 
 ArrayXd DiagMC::get_Ep() {
   ArrayXXd output = Epol;
 #ifdef SECUMUL
-  return output.colwise().sum() / G0p *pref_calc();
+  return output.colwise().sum() *(G0ptmima/G0p2arms) *pref_calc();
 #else
-  return output.colwise().sum() /G0p /Data.col(1).sum();
+  return output.colwise().sum() *(G0ptmima/G0p2arms) /Data.col(1).sum();
 #endif
 }
 
@@ -49,9 +49,9 @@ ArrayXXd DiagMC::get_SE() {
   ArrayXXd output(taumap.taubin, SE.cols()+1);
   output.col(0) = taumap.print();
 #ifdef SECUMUL
-  output.rightCols(SE.cols()) = SE /G0p *pref_calc();
+  output.rightCols(SE.cols()) = SE *(G0ptmima/G0p2arms) *pref_calc();
 #else
-  output.rightCols(SE.cols()) = SE /G0p /Data.col(1).sum();
+  output.rightCols(SE.cols()) = SE *(G0ptmima/G0p2arms) /Data.col(1).sum();
 #endif
   for (int i=0 ; i< SE.cols() ; i++) {
 	output.col(i+1) *= taumap.norm_table();
@@ -66,9 +66,9 @@ ArrayXXcd DiagMC::get_G0SEiw() {
 	output(it,0) = static_cast<double>(it)/static_cast<double>(wbin)*wmax;
   }
 #ifdef SECUMUL
-  output.rightCols(G0SEiw.cols()) = G0SEiw /G0p *pref_calc();
+  output.rightCols(G0SEiw.cols()) = G0SEiw /G0p1arm *pref_calc();
 #else
-  output.rightCols(G0SEiw.cols()) = G0SEiw /G0p /Data.col(1).sum();
+  output.rightCols(G0SEiw.cols()) = G0SEiw /G0p1arm /Data.col(1).sum();
 #endif
   return output;  
 }

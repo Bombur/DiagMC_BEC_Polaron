@@ -1,11 +1,10 @@
 #include "tmap.h"
 
-tmap::tmap(const std::vector<std::function<double(int)> > & fvec, const std::vector<int> bins, const std::vector<double> taus):taubin(bins[bins.size()-1]), taumax(taus[taus.size()-1]) {
+tmap::tmap(const std::vector<std::function<double(int)> > & fvec, const std::vector<int> bins, const std::vector<double> taus, const int & tmit, const int & tmait): taubin(bins[bins.size()-1]), taumin(taus[tmit]), taumax(taus[tmait]), taug0max(taus[taus.size()-1]) {
   try{
 	//Tests on Arguments
 	std::size_t sizetest=bins.size();
 	if ((taus.size()!= sizetest) || (fvec.size() != sizetest - 1)) {throw std::out_of_range("Input vector sizes do not fit!");}
-	if (bins[0] != 0) {throw std::invalid_argument("bins[0] != 0");}
 	for (std::size_t it = 0; it< fvec.size(); it++) {
 	  if ((bins[it] > bins[it+1]) || (taus[it] > taus[it+1])) {throw std::invalid_argument("Bins or Taus vectors are not monoton increasing!");}
 	}
@@ -36,18 +35,14 @@ tmap::tmap(const std::vector<std::function<double(int)> > & fvec, const std::vec
 	  mymap[i] = val_bin;
 	  val_bin += 1;
 	}
-	mymap[taus[taus.size()-1]] = bins[bins.size()-1]; 
+	mymap[taus[taus.size()-1]] = bins[bins.size()-1];
 	
-	//Tests on converted map
-	if (fabs(mymap.cbegin()->first - 0.) > 0.000000001 || mymap.cbegin()->second != 0) {throw std::logic_error("tau[0] != 0!");}
-	
+	if ((mymap.begin()->first > 0.) || (mymap.begin()->second > 0)) {throw std::range_error("Bin[0] != 0 !!");}
 
 	for (auto mapit = mymap.cbegin(); mapit!= std::prev(mymap.cend(), 1); ++mapit){
 	  if (mapit->first > std::next(mapit, 1)-> first) {throw std::range_error("Map Keys are not monoton increasing!");}
 	  if (mapit->second > std::next(mapit, 1)-> second) {throw std::range_error("Map Values are not monoton increasing!");}
 	}
-  
-		
   } catch (std::exception& e) {
  	std::cerr << e.what() << std::endl;
  	exit(EXIT_FAILURE);
@@ -74,10 +69,9 @@ int tmap::bin(const double & tau) {
     std::cerr << "BIN assign Warning!" << std::endl;
     std::cerr<<tau << '\t' << lower->first << '\t' << upper->first << '\t' << lower->second << '\t' << upper->second << std::endl;
   } 
-  //assert(lower->second == upper->second);
+
 #endif
-  assert(upper->first>0 && upper->first<taubin);
-  
+  assert(upper->second>= 0 && upper->second<=taubin);
   return std::prev(upper,1)->second;  
 }
 
@@ -123,18 +117,21 @@ double myexp(const double & x, const double & a, const double & x0, const double
   return exp(a*(x - x0))- 1. + y0;
 }
 
-std::vector<std::function<double(int)> > create_fvec(const pt::ptree & mypt, const pt::ptree::key_type & key) {
+std::vector<std::function<double(int)> > create_fvec(const pt::ptree & mypt) {
   try{
 	std::vector<std::function<double(int)> > fvec;
-	for (const auto & jsonit : mypt.get_child(key)) {
+	std::vector<double> x0s= as_vector<double>(mypt, "Bins");
+	std::vector<double> y0s= as_vector<double>(mypt, "Taus");
+	int it = 0;
+	for (const auto & jsonit : mypt.get_child("Functions")) {
 	  funcs whichfunc;
 	  whichfunc = static_cast<funcs>(jsonit.second.get<int>("f"));
 	  if (static_cast<int>(whichfunc)<0 || static_cast<int>(whichfunc) >2) {std::cerr<< "Functions Conversion Warning! Default chosen!" <<std::endl;;}
 	  std::vector<double> whichparams;	
 	  whichparams.push_back(jsonit.second.get<double>("a"));
-	  whichparams.push_back(jsonit.second.get<double>("x0"));
-	  whichparams.push_back(jsonit.second.get<double>("y0"));
-	
+	  whichparams.push_back(x0s[it]);
+	  whichparams.push_back(y0s[it]);
+	  it+=1;
 	  if (whichparams.size() < 3) {throw std::out_of_range("Not enough Parameters to create Function!");}
 
 	  switch(whichfunc) {

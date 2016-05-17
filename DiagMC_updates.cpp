@@ -22,17 +22,28 @@ double DiagMC::disprel(const std::array< double, 3> & q){
 }
 #endif
 
+double DiagMC::logVq2(const std::array< double, 3 > & q) {
+  return std::log(Vq2(q));
+}
+
+double DiagMC::logG0el(const std::array< double, 3 > & p, const double & tfin, const double & tinit) {
+  return -((vsq(p)/2./mass) - mu)*(tfin-tinit);
+}
+
 double DiagMC::G0el(const std::array< double, 3 > & p, const double & tfin, const double & tinit) {
-  return expfun(-((vsq(p)/2./mass) - mu)*(tfin-tinit));
+  return expfun(logG0el(p, tfin, tinit));
+}
+
+double DiagMC::logDph(const std::array< double, 3 > & q, const double & tfin, const double & tinit) {
+  return -disprel(q)*(tfin-tinit);
 }
 
 double DiagMC::Dph(const std::array< double, 3> & q, const double & tfin, const double & tinit) {
-  return expfun(-disprel(q)*(tfin-tinit));
+  return expfun(logDph(q, tfin, tinit));
 }
 
 double DiagMC::irwsinV(const std::array< double, 3 > & p, const std::array< double, 3 > & q, const double & tfin, const double & tinit){
-  double pterm = (vsq(p-q)-vsq(p))/2./mass;
-  return expfun(-(pterm + disprel(q))*(tfin-tinit));
+  return expfun(- tau2pref(p, q)*(tfin - tinit));
 }
 
 double DiagMC::tau2pref(const std::array< double, 3 > & p, const std::array< double, 3 > & q) {
@@ -47,11 +58,13 @@ int DiagMC::change_tau() {
   double ntau = diag.get_tinit(2*diag.get_order()) - log(drnd())/E;		//new tau
   double otau = diag.get_tau();
  
-  if (ntau < taumap.taumax) {
+  if ((ntau > taumap.taumin) && (ntau < taumap.taug0max)) {
 	if (diag.set_tau(ntau) == 0) {
 	  updatestat(0,1) +=1;						//possible
 	  updatestat(0,3) +=1;						//accepted
-	  global_weight *= G0el(diag.get_p(0), ntau, otau);
+#ifndef NCHECK
+	  global_weight += logG0el(diag.get_p(0), ntau, otau);
+#endif
 	  return 0;
 	}
   }
@@ -121,16 +134,26 @@ int DiagMC::ct(){
 	diag.pr_tau2.t = diag.pr_tau1.t - (dir*log(drnd())/Efac);
 	if ((diag.pr_tau2.t >= diag.pr_taufin) || (diag.pr_tau2.t <= diag.pr_tauin)){return -1;}
   } 
+  
+  //For Tau cut
+  if (diag.get_order() > 0){
+	double deltat = (taumap.taumax + taumap.taumin)/2.;
+	if (diag.pr_arc == 1){ deltat =(diag.get_tinit(2*diag.get_order()) - diag.pr_tau2.t);}
+	else if (diag.pr_arc == 2*diag.get_order()) {deltat = (diag.pr_tau2.t - diag.get_tinit(1));}
+	if ((deltat < taumap.taumin) || (deltat > taumap.taumax)) {return -1;}
+  }
 
   //weight variables
   int accept = 0; //-1:metropolis, 0:rejected explim, 1:accepted explim
   double weight =1.;
+  double arg = (- Efac*(diag.pr_tau2.t - diag.pr_tau1.t));
   
   //Underflow
-  if (Efac*(diag.pr_tau2.t - diag.pr_tau1.t)>explim) {accept = 0; overflowstat(7,1)+=1;}
+  if (arg < -explim) {accept = 0; overflowstat(7,1)+=1;}
   //Overflow
-  else if (Efac*(diag.pr_tau2.t - diag.pr_tau1.t)<-explim) {accept =1; overflowstat(7,0)+=1;}
+  else if (arg >explim) {accept =1; overflowstat(7,0)+=1;}
   //Normal Case
+  else if (arg > 0.) {accept = 1;}
   else{accept =-1;}
   
  
@@ -142,25 +165,23 @@ int DiagMC::ct(){
 	return -1;
   }
   
-  weight *= expfun(- Efac*(diag.pr_tau2.t - diag.pr_tau1.t)) ;
-  //if (diag.pr_tau2.t >diag.pr_tau1.t) {testhisto(taumap.bin(diag.pr_tau2.t- diag.pr_tau1.t), 0) +=1;}
-  //else {testhisto(taumap.bin(diag.pr_tau1.t - diag.pr_tau2.t), 1) +=1;}
-
-  
   if (accept == 1) {
 	updatestat(7,3) +=1;		//accepted
 	overflowstat(7,3) +=1;    //accepted due to overflow
 	diag.ct();
-	global_weight *= weight;
+#ifndef NCHECK
+	global_weight += arg;
+#endif
 	return 0;
   }
   
-  if (drnd() < weight) {
-	//std::cout  << "ct accepted !" << std:: endl;
+  if (drnd() < expfun(arg)) {
 	assert(accept == -1);
     updatestat(7,3) +=1;		//accepted
     diag.ct();
-	global_weight*=weight;
+#ifndef NCHECK
+	global_weight += arg;
+#endif
   }
   else {
     updatestat(7,2) +=1;		//rejected
@@ -170,6 +191,7 @@ int DiagMC::ct(){
 
 
 int DiagMC::insert() {
+  if (diag.get_order() ==0 && fo_insrem){return fo_insert();}
   lu = "insert()";
   updatestat(1,0) +=1;		//attempted
   
@@ -277,17 +299,19 @@ int DiagMC::insert() {
 	return -1;
   }
   
-  double weight_diff = 1.;
-#ifndef NDEBUG
+  double arg = 0.;
+#ifndef NCHECK
    //weight check
-  weight_diff*=Vq2(diag.pr_q)*irwsinV(diag.get_p(diag.pr_arc), diag.pr_q, diag.pr_tau2.t, diag.pr_tau1.t);
+  arg = -Efac*(diag.pr_tau2.t - diag.pr_tau1.t);
 #endif
   
   if (accept == 1) {
 	updatestat(1,3) +=1;		//accepted
 	overflowstat(1,3) +=1;    //accepted due to overflow
 	diag.insert();
-	global_weight *= weight_diff;
+#ifndef NCHECK
+	global_weight += (arg + logVq2(diag.pr_q));
+#endif
 	return 0;
   }
   
@@ -299,8 +323,7 @@ int DiagMC::insert() {
   //order
   double n = static_cast<double>(diag.get_order());
   weight *= fw;  //Fake-Weight
-  if (diag.get_order() == 0) {weight /= fwzero;}
-  if (diag.get_order() == 1) {weight /= fwone;}
+  if (n < fwtab.size()) {weight *= fwtab[n];} 
 
   weight *= Prem/Pins;	
   weight /= (1. + (n+1.)*2.); 	//remove selecting vertex 
@@ -313,10 +336,11 @@ int DiagMC::insert() {
   
   //Actual metropolis
   if (drnd() < weight) {
-	assert(accept == -1);
 	updatestat(1,3) +=1;		//accepted
 	diag.insert();
-	global_weight *= weight_diff;
+#ifndef NCHECK
+	global_weight += (arg + logVq2(diag.pr_q));
+#endif
   }
   else {
 	updatestat(1,2) +=1;		//rejected
@@ -327,6 +351,7 @@ int DiagMC::insert() {
 
 
 int DiagMC::remove() {
+  if (diag.get_order() == 1 && fo_insrem){return fo_remove();}
   lu = "remove()";
   updatestat(2,0) += 1;		//attempted
   
@@ -397,13 +422,8 @@ int DiagMC::remove() {
   //without cut off
   } else {accept = -1;	weight *= Efac;}
   
-  //weight check
-  double weight_diff = 1.;
-#ifndef NDEBUG 
-  if (accept !=0) {weight_diff/=Vq2(q)*irwsinV(diag.pr_p, q, diag.pr_tau2.t, diag.pr_tau1.t);}
-#endif
 
-   //possible
+  //possible
   updatestat(2,1) +=1;	
  
   //Acceptance and Rejection because of the Overflow
@@ -412,11 +432,20 @@ int DiagMC::remove() {
 	overflowstat(2, 2) += 1; //rejected due to overflow
 	return -1;
   }
+  
+  double arg = 0.;
+#ifndef NCHECK
+   //weight check
+  arg = - tau2pref(diag.pr_p, q) *(diag.pr_tau2.t - diag.pr_tau1.t);
+#endif
+  
   if (accept == 1) {
 	updatestat(2,3) +=1;		//accepted
 	overflowstat(2,3) +=1;    //accepted due to overflow
 	diag.remove();
-	global_weight *= weight_diff;
+#ifndef NCHECK
+	global_weight -= (arg + logVq2(q));
+#endif
 	return 0;
   }
   
@@ -429,8 +458,7 @@ int DiagMC::remove() {
   //order
   double n = static_cast<double>(diag.get_order());
   weight /= fw;   // for fake function
-  if (diag.get_order() == 1) {weight *= fwzero;}
-  if (diag.get_order() == 2) {weight *= fwone;}
+  if ((n-1) < fwtab.size()) {weight /= fwtab[n-1];} 
   
   weight *= Pins/Prem;	
   weight /= (1. + (n-1.)*2.); 	//insert selecting vertex 
@@ -448,7 +476,9 @@ int DiagMC::remove() {
 	assert(accept == -1);
 	updatestat(2,3) +=1;		//accepted
 	diag.remove();
-	global_weight *= weight_diff;
+#ifndef NCHECK
+	global_weight -= (arg+logVq2(q));
+#endif
   }
   else {
 	updatestat(2,2) +=1;		//rejected
@@ -496,46 +526,21 @@ int DiagMC::swap() {
 			Efac -= disprel(qright); break;}
   }
   
-  //weight variables
-  int accept = 0; //-1:metropolis, 0:rejected explim, 1:accepted explim
-  double weight = 1.;  
+  double arg = Efac*(diag.pr_taufin - diag.pr_tauin);
   
   //Underflow
-  if (Efac*(diag.pr_taufin - diag.pr_tauin) > explim){accept=0; overflowstat(idx, 1)+=1;}
+  if (arg > explim){overflowstat(idx, 1)+=1;}
   //Overflow
-  else if (Efac*(diag.pr_taufin - diag.pr_tauin) < -explim){accept=1; overflowstat(idx, 0)+=1;}
+  else if (arg < -explim){overflowstat(idx, 0)+=1;}
   //normal case
-  else {accept =-1;}
-  
-  
-  
-  if (accept == 0) {
-	updatestat(3,2) += 1;
-	updatestat(idx,2) +=1; //rejected
-	overflowstat(3,2) +=1;
-	overflowstat(idx, 2) += 1; //rejected due to overflow
-	return -1;
-  }
-  
-  weight *= expfun(- Efac*(diag.pr_taufin - diag.pr_tauin)) ;
-  
-  if (accept == 1) {
-	updatestat(3, 3) +=1;
-	updatestat(idx,3) +=1;		//accepted
-	overflowstat(3,3) +=1;
-	overflowstat(idx,3) +=1;    //accepted due to overflow
-	diag.swap();
-	global_weight *= weight;
-	return 0;
-  }
-  
-  if (drnd() < weight) {
-	//std::cout  << lu << " accepted!" <<std::endl; 
-	assert(accept == -1);
+ 
+  if (log(drnd()) < (- arg)) {
 	updatestat(3,3) +=1;
     updatestat(idx,3) +=1;		//accepted
     diag.swap();
-	global_weight*=weight;
+#ifndef NCHECK
+	global_weight -= arg;
+#endif
   }
   else {
 	updatestat(3,2) +=1;
@@ -581,7 +586,9 @@ int DiagMC::dq() {
   if (drnd() < weight) {
     updatestat(8,3) +=1;		//accepted
     diag.dq();
-	global_weight *= weight;
+#ifndef NCHECK
+	global_weight += (arg + logVq2(qold + diag.pr_q) - logVq2(qold));
+#endif
   }
   else {
     updatestat(8,2) +=1;		//rejected
@@ -718,6 +725,13 @@ int DiagMC::inscrossed() {
 	weight /= Eleft;
 	weight /= Eright;
   }
+  
+  //For Tau cut
+  double deltat = (taumap.taumax + taumap.taumin)/2.;
+  if (diag.pr_arc == 1){ deltat =(diag.get_tinit(2*diag.get_order()) - diag.pr_tau1.t);}
+  else if (diag.pr_arc == 2*diag.get_order()) {deltat = (diag.pr_tau2.t - diag.get_tinit(1));}
+  if (deltat > taumap.taumax) {return -1;}
+
 	
   updatestat(9,1) +=1;		//possible
   
@@ -728,17 +742,18 @@ int DiagMC::inscrossed() {
   }
   
   
-  double weight_diff = 1.;
-#ifndef NDEBUG
+#ifndef NCHECK
    //weight check
-  weight_diff*=Vq2(diag.pr_q)*expfun(-(Eleft*(diag.pr_tauin - diag.pr_tau1.t))- (Eright*(diag.pr_tau2.t-diag.pr_tauin)));
+  double arg = (-(Eleft*(diag.pr_tauin - diag.pr_tau1.t))- (Eright*(diag.pr_tau2.t-diag.pr_tauin)));
 #endif
   
   if (accept == 1) {
 	updatestat(9,3) +=1;		//accepted
 	overflowstat(9,3) +=1;    //accepted due to overflow
 	diag.inscrossed();
-	global_weight *= weight_diff;
+#ifndef NCHECK
+	global_weight += (arg + logVq2(diag.pr_q));
+#endif
 	return 0;
   }
   
@@ -750,8 +765,7 @@ int DiagMC::inscrossed() {
   //order
   double n = static_cast<double>(diag.get_order());
   weight *= fw;  //Fake-Weight
-  if (diag.get_order() == 0) {weight /= fwzero;}
-  if (diag.get_order() == 1) {weight /= fwone;}
+  if (n < fwtab.size()) {weight *= fwtab[n];} 
 
   weight *= Pic/Pic;	
   weight /= (1. + (n+1.)*2.); 	//remove selecting vertex 
@@ -766,9 +780,9 @@ int DiagMC::inscrossed() {
 	assert(accept == -1);
 	updatestat(9,3) +=1;		//accepted
 	diag.inscrossed();
-	global_weight *= weight_diff;
-	//testhisto(taumap.bin(diag.pr_tauin - diag.pr_tau1.t),0)+=1;
-	//testhisto(taumap.bin(diag.pr_tau2.t - diag.pr_tauin),1)+=1;
+#ifndef NCHECK
+	global_weight += (arg + logVq2(diag.pr_q));
+#endif
   }
   else {
 	updatestat(9,2) +=1;		//rejected
@@ -782,7 +796,7 @@ int DiagMC::remcrossed() {
   updatestat(10,0) += 1;		//attempted
  
 //Proposing and fast rejections
-  if (diag.get_order() == 0 || diag.get_order() == 1) {return -1;}
+  if (diag.get_order() < 2) {return -1;}
 #ifdef SECUMUL
   if (diag.get_order() < minord + 1) {return -1;} 
 #endif
@@ -801,6 +815,11 @@ int DiagMC::remcrossed() {
   
   //tau borders and initial tau
   diag.pr_tauin = diag.get_tinit(diag.pr_arc);
+  double deltat = (taumap.taumax + taumap.taumin)/2.;
+  if (diag.pr_arc == 2){deltat =(diag.get_tinit(2*diag.get_order()) - diag.pr_tauin);}
+  else if (diag.pr_arc == (2*diag.get_order()-1)) {deltat = (diag.pr_tauin - diag.get_tinit(1));}
+  if (deltat < taumap.taumin) {return -1;}
+  
   double tmaxl = diag.pr_tauin - diag.get_tinit(diag.pr_arc -2);
   double tmaxr = diag.get_tfin(diag.pr_arc+1) - diag.pr_tauin;
   
@@ -879,17 +898,18 @@ int DiagMC::remcrossed() {
 	return -1;
   }
   
-  double weight_diff = 1.;
-#ifndef NDEBUG
+#ifndef NCHECK
    //weight check
-  weight_diff/=Vq2(q)*expfun(-(Eleft*(diag.pr_tauin - diag.pr_tau1.t))- (Eright*(diag.pr_tau2.t-diag.pr_tauin)));
+  double arg = (-(Eleft*(diag.pr_tauin - diag.pr_tau1.t))- (Eright*(diag.pr_tau2.t-diag.pr_tauin)));
 #endif
   
   if (accept == 1) {
 	updatestat(10,3) +=1;		//accepted
 	overflowstat(10,3) +=1;    //accepted due to overflow
 	diag.remcrossed();
-	global_weight *= weight_diff;
+#ifndef NCHECK
+	global_weight -= (arg +logVq2(q)) ;
+#endif
 	return 0;
   }
   
@@ -901,8 +921,7 @@ int DiagMC::remcrossed() {
   //order
   double n = static_cast<double>(diag.get_order());
   weight /= fw;   // for fake function
-  if (diag.get_order() == 1) {weight *= fwzero;}
-  if (diag.get_order() == 2) {weight *= fwone;}
+  if ((n-1) < fwtab.size()) {weight /= fwtab[n-1];} 
   
   weight *= Pic/Prc;	
   weight /= (1. + (n-1.)*2.); 	//insert selecting vertex 
@@ -918,7 +937,9 @@ int DiagMC::remcrossed() {
 	assert(accept == -1);
 	updatestat(10,3) +=1;		//accepted
 	diag.remcrossed();
-	global_weight *= weight_diff;
+#ifndef NCHECK
+	global_weight -= (arg +logVq2(q)) ;
+#endif
   }
   else {
 	updatestat(9,2) +=1;		//rejected
@@ -926,3 +947,199 @@ int DiagMC::remcrossed() {
   return 0;
 }
 
+int DiagMC::fo_insert() {
+  lu = "fo_insert()";
+  updatestat(11,0) +=1;		//attempted
+  
+//Proposing and fast rejections
+  if (diag.get_order() != 0) {return -1;}
+//choose vertex
+  diag.pr_arc =0;
+ 
+//choose q
+  if (qsigma != 0) {
+	diag.gauss_q(static_cast<double>(qsigma), dqins);
+  }
+  else {
+	diag.linear_q(dqins);
+	if (vsq(diag.pr_q) > dqins*dqins) {return -1;}
+  }
+#ifdef BEC
+  //Q Cut off
+  if (vsq(diag.pr_q) > qc*qc){return -2;}
+#endif
+  diag.pr_p = diag.get_p(diag.pr_arc) - diag.pr_q;
+  	
+  //tau limits
+  diag.pr_tauin = diag.get_tinit(diag.pr_arc);
+  diag.pr_taufin = diag.get_tfin(diag.pr_arc);
+  
+  //choose tau_1
+  diag.pr_tau1.t = (drnd()*(diag.pr_taufin - taumap.taumin - diag.pr_tauin))+ diag.pr_tauin;			//tau1
+  diag.pr_tau1.link = diag.pr_arc+2;
+  
+  //choose tau_2
+  diag.pr_tau2.t = (drnd()*(diag.pr_taufin - taumap.taumin - diag.pr_tau1.t))+ diag.pr_tau1.t + taumap.taumin;
+  diag.pr_tau2.link = diag.pr_arc+1;
+  
+  if ((diag.pr_tau2.t - diag.pr_tau1.t) > taumap.taumax) {return -1;}
+  
+  //weight variables
+  int accept = 0; //-1:metropolis, 0:rejected explim, 1:accepted explim
+  double weight = 1.; 
+  double arg = -tau2pref(diag.get_p(diag.pr_arc), diag.pr_q)*(diag.pr_tau2.t - diag.pr_tau1.t);
+  
+  //Underflow
+  if (arg < -explim) {accept = 0;  overflowstat(11,1)+=1;}
+  //Overflow
+  else if (arg > explim) {accept = 1;  overflowstat(11,0)+=1;}
+  //normal case
+  else {accept = -1;
+	weight *= expfun(arg);
+  }
+    
+  updatestat(11,1) +=1;		//possible
+
+  if (accept == 0) {
+	updatestat(11,2) +=1; //rejected
+	overflowstat(11, 2) += 1; //rejected due to overflow
+	return -1;
+  }
+  
+  if (accept == 1) {
+	updatestat(11,3) +=1;		//accepted
+	overflowstat(11,3) +=1;    //accepted due to overflow
+	diag.insert();
+#ifndef NCHECK
+	global_weight += (arg + logVq2(diag.pr_q));
+#endif
+	return 0;
+  }
+  
+  //Rest of weight part
+  weight /= pow((2.*M_PI), 3);
+  weight *= Vq2(diag.pr_q);
+  
+  // a priori part
+  //order
+  weight *= fw;  //Fake-Weight
+  weight *= fwtab[0]; 
+
+  weight *= Prem/Pins;	
+  weight *= (diag.pr_taufin-taumap.taumin-diag.pr_tauin); //sample first vertex to insert
+  weight *= (diag.pr_taufin-taumap.taumin-diag.pr_tau1.t); //sample first vertex to insert
+  
+  //select phonon momentum
+  if (qsigma != 0) {weight *= 4./3.*M_PI*pow(dqins,3);}
+  else {weight *= pow(2.*dqins,3);}
+  
+  //Actual metropolis
+  if (drnd() < weight) {
+	updatestat(11,3) +=1;		//accepted
+	diag.insert();
+#ifndef NCHECK
+	global_weight += (arg + logVq2(diag.pr_q));
+#endif
+  }
+  else {
+	updatestat(11,2) +=1;		//rejected
+  }  
+  return 0;
+}
+
+int DiagMC::fo_remove() {
+  lu = "fo_remove()";
+  updatestat(12,0) += 1;		//attempted
+  
+//Proposing and Fast Rejection
+  if (diag.get_order()!=1) {return -1;}
+
+//choose vertex
+  diag.pr_arc = 1;
+  std::array<double, 3> q = diag.get_p(diag.pr_arc-1)-diag.get_p(diag.pr_arc); 
+  if (vsq(q) > dqins*dqins) {return -1;}
+
+  diag.pr_tauin = diag.get_tinit(diag.pr_arc-1);
+  diag.pr_taufin = diag.get_tfin(diag.pr_arc+1);
+	
+  diag.pr_tau1.t = diag.get_tinit(diag.pr_arc);
+  diag.pr_tau1.link  = -1;
+  diag.pr_tau2.t  = diag.get_tfin(diag.pr_arc);
+  diag.pr_tau2.link = -1;
+
+  if ((diag.pr_tau2.t - diag.pr_tau1.t) > taumap.taumax) {return -1;}
+  
+  diag.pr_q.fill(0);		
+	
+  diag.pr_p = diag.get_p(diag.pr_arc-1);
+  
+  // weight variables
+  int accept = 0; //-1:metropolis, 0:rejected explim, 1:accepted explim
+  double weight = 1.;
+  double arg = -tau2pref(diag.pr_p, q)*(diag.pr_tau2.t - diag.pr_tau1.t); //factor for tau2 distribution
+
+  //Underflow
+  if (arg < -explim) {accept = 1;  overflowstat(12,1)+=1;}
+  //Overflow
+  else if (arg > explim) {accept = 0;  overflowstat(12,0)+=1;}
+  //normal case
+  else {
+	  accept = -1;
+	  weight /= expfun(arg);
+  }
+
+  //possible
+  updatestat(12,1) +=1;	
+ 
+  //Acceptance and Rejection because of the Overflow
+  if (accept == 0) {
+	updatestat(12,2) +=1; //rejected
+	overflowstat(12, 2) += 1; //rejected due to overflow
+	return -1;
+  }
+  
+  
+  if (accept == 1) {
+	updatestat(12,3) +=1;		//accepted
+	overflowstat(12,3) +=1;    //accepted due to overflow
+	diag.remove();
+#ifndef NCHECK
+	global_weight -= (arg + logVq2(q));
+#endif
+	return 0;
+  }
+  
+  //From here on we have the normal case
+  //Rest of the weight part
+  weight *= pow((2.*M_PI), 3);
+  weight /= Vq2(q);
+  
+  // a priori part
+  //order
+  weight /= fw;   // for fake function
+  weight /= fwtab[0];
+  
+  weight *= Pins/Prem;	
+ 
+  //select phonon momentum
+  //linear
+  if (qsigma != 0) {weight /= (4./3.*M_PI*pow(dqins,3));}
+  else {weight /= pow(2.*dqins,3);}
+  
+  //tau1
+  weight /= (diag.pr_taufin-taumap.taumin-diag.pr_tauin);
+  //tau2
+  weight /= (diag.pr_taufin-taumap.taumin-diag.pr_tau1.t);
+  
+  if (drnd() < weight) {
+	updatestat(12,3) +=1;		//accepted
+	diag.remove();
+#ifndef NCHECK
+	global_weight -= (arg+logVq2(q));
+#endif
+  }
+  else {
+	updatestat(12,2) +=1;		//rejected
+  }
+  return 0;
+}

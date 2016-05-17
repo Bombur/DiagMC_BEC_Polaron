@@ -11,9 +11,15 @@ void DiagMC::test() {
 	//Diagram
 	diag.test(qc); 
 	if (diag.get_order() > maxord && maxord != -1) {throw maxoerr();}
+	if (diag.get_tinit(0) < 0) {
+	  std::cerr << diag.get_tinit(0) << std::endl;
+	  throw oor_tau();
+	}
 	
 	//tau
-	if (diag.get_tau() > taumap.taumax || diag.get_tau() < 0) {throw oor_tau();}
+	if (diag.get_tau() > taumap.taug0max || diag.get_tau() < taumap.taumin) {throw oor_tau();}
+	if ((diag.get_order() > 0) &&((diag.get_tinit(2*diag.get_order()) - diag.get_tinit(1)) < taumap.taumin)) {throw oor_tau();}
+	if ((diag.get_order() > 0) &&((diag.get_tinit(2*diag.get_order()) - diag.get_tinit(1)) > taumap.taumax)) {throw oor_tau();}
 	
 	double CG0p = 0;
 	for (int i=0; i< taumap.taubin; i++) {
@@ -24,19 +30,20 @@ void DiagMC::test() {
 #endif	  
 #else
 	  if (Data(i, 0)< (Data(i, 1) + Data(i, 2) + Data(i, 4)- 0.000001)) {
-		  std::cout << Data.topRows(20)<< std::endl;
+		std::cout << "Line i = " << i << '\n' << Data.row(i) <<std::endl;
 		throw  greenerr();}
-	  
 #endif
+  	  if (Data.minCoeff()<0){throw greenerr();}
 	  CG0p += Data(i, 1);	  
 	}
 	//Weight Check
+#ifndef NCHECK
 	double weight_diff = fabs(weight_calc() - global_weight);
-	if (weight_diff > (0.0000001*global_weight)){
+	if (weight_diff > (0.0001*fabs(global_weight))){
 	  std::cerr << weight_diff << '\t' << weight_calc() << '\t' << global_weight << std::endl;  
 	  std::cerr << "Warning! Weight Check would fail in Order " << diag.get_order() <<"!" <<std::endl;
 	}
-	
+#endif
 
 	//Statistics
 	for (int i = 0; i< 4; i++) {
@@ -53,19 +60,17 @@ void DiagMC::test() {
 }
 
 double DiagMC::weight_calc() {
-  double weight = G0el(diag.get_p(0), diag.get_tfin(0), 0.);  //G0(p, t1, 0)
-  
+  double arg = logG0el(diag.get_p(0), diag.get_tfin(0), 0.);  //G0(p, t1, 0)
   
   for (int i=1; i< 1+2*diag.get_order(); i++) {
-	weight *= G0el(diag.get_p(i), diag.get_tfin(i), diag.get_tinit(i));   //G0(pi, ti+1, ti)
+	arg += logG0el(diag.get_p(i), diag.get_tfin(i), diag.get_tinit(i));   //G0(pi, ti+1, ti)
 	if (diag.get_link(i) > i) { //opening of an arc
 	  std::array<double, 3> q = diag.get_p(i-1)-diag.get_p(i);
-	  weight *= Dph(q, diag.get_tinit(diag.get_link(i)), diag.get_tinit(i));	//Dph
-	  weight *= Vq2(q);			//
+	  arg += logDph(q, diag.get_tinit(diag.get_link(i)), diag.get_tinit(i));	//Dph
+	  arg += logVq2(q);			//
 	}
   }
-  
-  return weight;
+  return arg;
 }
   
 
@@ -74,12 +79,12 @@ void DiagMC::printall(){
   
   std::cout << p <<'\t'<< mu <<'\n';
   std::cout << qc <<'\n';
-  std::cout << taumap.taumax <<'\n';
+  std::cout << taumap.taug0max <<'\n';
   std::cout << taumap.taubin <<'\n';
   std::cout << alpha <<'\n';
   std::cout << relm <<'\n';
   std::cout << E <<'\n';
-  std::cout << G0p <<'\n';
+  std::cout << G0p1arm <<'\n';
   std::cout << maxord <<'\n';
   std::cout  <<'\n';
 #ifdef FP

@@ -65,8 +65,8 @@ int main() {
 	std::vector<ArrayXXd> SE(nseeds, ArrayXXd::Zero(bintemp[bintemp.size()-1], 4)); 
 	std::vector<ArrayXXcd> G0SEiw(nseeds, ArrayXXcd::Zero(config.get<int>("Omega_bin"), 3)); 
 
-	ArrayXXd uds_tot = ArrayXXd::Zero(11,6);
-	ArrayXXd ofs_tot = ArrayXXd::Zero(11,6);
+	ArrayXXd uds_tot = ArrayXXd::Zero(13,6);
+	ArrayXXd ofs_tot = ArrayXXd::Zero(13,6);
 	ArrayXd os_tot = ArrayXd::Zero(config.get<int>("Order_Stat_Size"));
 	ArrayXd ts_tot = ArrayXd::Zero(10);
 	ArrayXXd qs_tot = ArrayXXd::Zero(config.get<int>("QStat_Size"), 2);
@@ -99,6 +99,8 @@ int main() {
 	  // -------------------- Order Step Loop----------------
 	  //order steps iterator
 	  int ordit =0;
+	  
+	  double speedcumul = 0.;
 	  
 	  //Total Max Order
 	  int TotMaxOrdcheck = -1;
@@ -283,6 +285,9 @@ int main() {
 #else	//-------------2nd Part of Order Loop--------------------------
 
 		  if ( (it%bec->Write_its) ==0) {
+			//fw_adapt()
+			if (bec->bool_fw_adapt()) {bec->fw_adapt();}
+			
 			//time 
 			steady_clock::time_point time_end = steady_clock::now();
 			nseconds = static_cast<double>(duration_cast<seconds>(time_end-time_begin).count());
@@ -291,12 +296,15 @@ int main() {
 		  
 			std::cout << "# " << seed<<  ": Time in Order Step  " << nseconds << '\t' << "dt  " << dt << '\n' << std::endl;
 			dt_be = steady_clock::now();
-			if (bec->normcalc() > bec->normmin-1) {normcheck = true;} // checking if we reached the norm minimum
-			if (bec->endcalc() > bec->endmin-1) {endcheck = true;} // checking if we reached the end minimum
+			if (bec->get_normostat() > bec->normmin-1) {normcheck = true;} // checking if we reached the norm minimum
+			if (bec->get_endostat() > bec->endmin-1) {endcheck = true;} // checking if we reached the end minimum
 
 			//To check Total Run Time
 			steady_clock::time_point Tott_check_end = steady_clock::now();
 			Tott_check = static_cast<double>(duration_cast<seconds>(Tott_check_end-Cumt_be).count());
+			
+			speedcumul+=static_cast<double>(it);
+			it=0;
 		  }	
 		  it++;
 			
@@ -310,7 +318,11 @@ int main() {
 		
 		
 		#pragma omp critical  // to have the same staring point
-		{	
+		{
+		  //first we need to calculate the normalization
+		  nnormstemp += bec->normcalc(); 
+		  nendstemp += bec->endcalc();
+		  
 		  if (ordit == 0) {Data_tot[seed] = bec->get_Data();}
 		  Eptot.col(seed) += bec->get_Ep();
 		  ArrayXXd tmp = bec->get_SE();
@@ -334,8 +346,6 @@ int main() {
 		  SEib.col(seed) += bec->get_SEib();
 		  Normstemp.col(seed) = bec->get_NormDiag();
 		  Endstemp.col(seed) = bec->get_EndDiag();
-		  nnormstemp += bec->normcalc();
-		  nendstemp += bec->endcalc();
 		  std::cout << "# Transfered Data thread " << seed << std::endl;
 		}
 		} //end of omp for loop
@@ -376,6 +386,8 @@ int main() {
 		// time per  order step
 		steady_clock::time_point Cumdt_end = steady_clock::now();
 		Cumdt = static_cast<double>(duration_cast<seconds>(Cumdt_end-Cumdt_be).count());
+		speedcumul /= static_cast<double>(nseeds);
+		speedcumul /= Cumdt;
 		
 		//Save Step Time for Order Step
 		stptime.push_back(Cumdt);
@@ -424,7 +436,7 @@ int main() {
 		steady_clock::time_point Cumt_end = steady_clock::now();
 		Cumt = static_cast<double>(duration_cast<seconds>(Cumt_end-Cumt_be).count());
 		
-		std::cout << "\n#Total Time " << Cumt << '\t' << "dt  " << Cumdt << '\n' << std::endl;
+		std::cout << "\n#Total Time " << Cumt << '\t' << "dt  " << Cumdt << '\t' << "speed [its/s]: " << speedcumul <<'\n' << std::endl;
 		
 		} while ((Cumt < DiagMC_pl[0]->TotRunTime - Cumdt) && (TotMaxOrdcheck != ordit) );
 #endif
@@ -723,7 +735,7 @@ int main() {
 	std::ofstream taus_outfile("data/stats/taus_tot");
 	
 	std::string udcols[] = {"ATTEMPTED", "POSSIBLE", "REJECTED", "ACCEPTED", "ACCEPTANCE RATIO POSSIBLE", "ACCEPTANCE RATIO TOTAL"};
-	std::string udrows[] = {"CHANGE TAU", "INSERT", "REMOVE", "SWAP", "SWAPoc", "SWAPco", "SWAPoocc", "CT in HO", "DQ", "IC", "RC"};
+	std::string udrows[] = {"CHANGE TAU", "INSERT", "REMOVE", "SWAP", "SWAPoc", "SWAPco", "SWAPoocc", "CT in HO", "DQ", "IC", "RC", "FOIns", "FORem"};
 
 	
 	uds_outfile << "Update Statistics" << '\n';

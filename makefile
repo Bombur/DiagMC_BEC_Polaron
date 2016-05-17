@@ -44,14 +44,13 @@ OBJ= $(SOURCE:.cpp=.o)
 #Header
 DEPS= DiagMC.h Diagram.h dvector.h mystructs.h Adaption.h tmap.h DiagMCException.h DiagramException.h RunException.h
 
-#Executeable
-EXE= ../DiagMC_BEC
+#Executable
+EXE = ../DiagMC_BEC
 
 #----------------------------------------------
 
 %.o: %.cpp $(DEPS)
 	$(CC) $(CFLAGS) -c -o $@ $< -I$(INC)
-
 	
 $(EXE): $(OBJ) 
 	$(CC) $(LDFLAGS) $(OBJ) -o $@ 

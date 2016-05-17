@@ -11,32 +11,30 @@ int DiagMC::measure() {
 #endif  
 
 //Fake weight reweighting
-  double cor = 1./pow(fw, cur_order);  
-  
+  double cor = 1.;  
+  for (int i = minord; i < cur_order; i++){cor /= fw;}
+  if (cur_order < fwtab.size()) {for (int i = minord; i < cur_order; i++){cor /= fwtab[i];}}
+  else if (minord < fwtab.size()) {for (int i = minord; i < fwtab.size(); i++){cor /= fwtab[i];}}
   
 // We are in Zero Order
   if (cur_order == 0) {
+	int bintau = taumap.bin(diag.get_tau());
 #ifndef SELFENERGY
-	Data(taumap.bin(diag.get_tau()), 0) += cor/fwzero/fwone; //0. Order contributes to All Orders for Green Sampling
+	Data(bintau, 0) += cor; //0. Order contributes to All Orders for Green Sampling
 #endif
-	Data(taumap.bin(diag.get_tau()), 1) += cor/fwzero/fwone; //Zero Order container
+	Data(bintau, 1) += cor; //Zero Order container
   }
   
 
 // We are in First Order
   if (cur_order ==1) {
 	int bintau = taumap.bin(diag.get_tau());
-	if(bintau > taumap.taubin || bintau <0){
-	  std::cout << diag.get_tau() << '\t' << bintau <<std::endl;
-	  assert(0);
-	}
 #ifdef SELFENERGY   // The First order can be measured as g0seg0 or g0se in Self ENergy Sampling
 	if (!fog0seg0) {bintau = taumap.bin(diag.get_tinit(2));}
 #else
-	Data(bintau, 0) += cor/fwone; //1. Order contributes to All Orders for Green Sampling
+	Data(bintau, 0) += cor; //1. Order contributes to All Orders for Green Sampling
 #endif
-	double tmp = Data.col(2).sum();
-	Data(bintau, 2) += cor/fwone; //First Order container
+	Data(bintau, 2) += cor; //First Order container
   }
   
   
@@ -113,10 +111,7 @@ int DiagMC::measure() {
   }
 #endif
 
-//Tests
-//for (int vert=1; vert<(2*diag.get_order()+1); vert++){
-  //if (diag.get_link(vert+1) == (vert-1)) {testhisto(taumap.bin(diag.get_tfin(vert)- diag.get_tinit(vert)),2)+=1;}
-//}
+
 //Orderstats
   if (cur_order < orderstat.size()){
 	orderstat(cur_order) +=1;
@@ -133,6 +128,7 @@ void DiagMC::meas_histo(){
 	  //tau
 	  double ttmp= diag.get_tinit(diag.get_link(vert)) - diag.get_tinit(vert);   //measure length of Phonon in tau
 	  int tbin = taumap.bin(ttmp);
+	  
 	  if (diag.get_link(vert) == vert+1) {tstat(tbin,1)+=1;}
 	  else if ((diag.get_link(vert) == vert + 2) && (diag.get_link(vert+1) == vert+3)){
 		tstat(tbin,2) +=1;

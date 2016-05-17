@@ -2,7 +2,8 @@
 
 void Diagram::test(const double & qc) {
   try {
-	if (times.size() != (2*order)+2) {throw dnf_diagvec();}
+	//std::cerr << times.size() << '\t' <<order << std::endl;
+	if (times.size() != (2*order)+2) { throw dnf_diagvec();}
 	if (elprop.size() != times.size()-1) {throw dnf_diagvec();}
 #ifndef NCHECK
 	if (elprop.size() != phprop.size()) {throw dnf_diagvec();}
