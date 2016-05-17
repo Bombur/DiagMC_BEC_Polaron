@@ -99,7 +99,7 @@ def Gtaugrwp(tau, Z, Ek):
 
 if params["Ep_Fit"]:
 	#write fit file
-	popt, pcov = optimize.curve_fit(Gtaugrwp, data[params["Fit_Bin"]:,0], data[params["Fit_Bin"]:,1])
+	popt, pcov = optimize.curve_fit(Gtaugrwp, data[params["Fit_Bin"]:,0], data[params["Fit_Bin"]:,1], p0= [2,params["Chemical_Potential"]+1], sigma= data[params["Fit_Bin"]:,2] )
 	perr = np.sqrt(np.diag(pcov)) 
 	fitFile = open("ana/fitparams", "w")
 	fitFile.write("#Polaron Energy \n")
@@ -113,8 +113,8 @@ if params["Ep_Fit"]:
 plt.yscale(scale)
 plt.xlabel(r'$\tau$')
 plt.ylabel(r'$\Sigma (\tau)$ or $G(\tau)$')
-plt.xlim([0, taumax])
-plt.ylim([1e2, 1e7])
+#plt.xlim([0, taumax])
+#plt.ylim([1e2, 1e7])
 plt.legend()
 plt.savefig('ana/plot_all.pdf')
 
@@ -135,8 +135,8 @@ fake_integrand = np.vectorize(fake_integrand)
 plt.plot(fake[:, 0], fake_integrand(fake[:, 0]), label='Analytical result')
 plt.xlabel(r'$\tau$')
 plt.ylabel(r'Fake-function')
-plt.xlim([0, taumax])
-plt.legend()
+#plt.xlim([0, taumax])
+#plt.legend()
 plt.savefig('ana/plot_0.pdf')
 
 plt.clf()
@@ -154,7 +154,7 @@ plt.plot(peter[:, 0], peter[:, 1], label=compare[0])
 plt.yscale(scale)
 plt.xlabel(r'$\tau$')
 plt.ylabel(r'$G_0 \Sigma G_0 (0, \tau)$')
-plt.xlim([0, 0.1])
+#plt.xlim([0, 0.1])
 plt.legend()
 plt.savefig('ana/plot_1.pdf')
 
@@ -174,8 +174,8 @@ else:
 # Compare
 peter = np.loadtxt(peter_loc+ '/'+ compare[1])
 plt.plot(peter[:, 0], peter[:, 1], label=compare[1])
-plt.xlim([0, taumax])
-plt.ylim([1e2,1e7])
+#plt.xlim([0, taumax])
+#plt.ylim([1e2,1e7])
 plt.yscale(scale)
 plt.xlabel(r'$\tau$')
 plt.ylabel(r'second order a')
@@ -198,64 +198,14 @@ else:
 plt.yscale(scale)
 plt.xlabel(r'$\tau$')
 plt.ylabel(r'second order b')
-plt.xlim([0, taumax])
+#plt.xlim([0, taumax])
 plt.legend()
 plt.savefig('ana/plot_2b.pdf')
 plt.clf()
 
-
-
-#--------------- plot Ep vs ws
-#sample
+#Loading Ws
 data = np.loadtxt('data/Ep/Epvsws')
 ws = data[:,0]
-plt.errorbar(-data[:, 0], np.mean(data[:, 1:], axis=1), np.std(data[:, 1:], axis=1)/np.sqrt(len(data[0,:])-2), label=r'$E_{pol}$')
-
-# ws Gerade
-def ws_gerade(ws):
-	return ws
-
-peter = np.vectorize(ws_gerade)
-plt.plot(-data[:, 0], peter(-data[:, 0]), 'r-', label=r'$\omega_{pol}$')
-plt.xlabel(r'$-\omega_{pol}$')
-plt.ylabel(r'$-E_{pol}$')
-plt.legend()
-plt.savefig('ana/Epvsws.pdf')
-
-plt.clf()
-
-
-if params["Ep_Root"]:
-	#finding root
-	Eps = []
-	for col in data[:,1:].T: 
-		func = interp1d(-data[:,0], col+data[:,0])
-		Eps.append(optimize.newton(func, -params["Chemical_Potential"]))
-	with open('ana/fitparams', 'r+') as fitin:
-		fitin.seek(0,2)
-		fitin.write("\nFrom Sampling")
-		fitin.write("\nE = -" + str(np.mean(Eps)) + " +- "+ str(np.std(Eps)/np.sqrt(len(Eps)-1))+"\n") 
-		
-
-
-#--------------- plot Ep Integrand Statistics
-
-#data = np.loadtxt('data/Ep/Eptest')
-#iti=0
-#for col in data.T[1:]:
-#	plt.plot(data[:, 0], col, label=r'$\omega_{Pol} = %g$' %(ws[iti]))
-#	iti += 1
-#peter = np.loadtxt(peter_loc+ '/mat_FP_1st_seexpmut_w2')
-#plt.plot(peter[:,0], peter[:,1], label="Mat") 
-#plt.yscale('log')
-#plt.xlabel(r'$\tau$')
-#plt.ylabel(r'$\Sigma(\mathbf{p}=0, \tau) e^{(\omega-\mu) \tau} $')
-#plt.xlim([0, 1.5])
-#plt.ylim([1e-2,1000])
-#plt.legend()
-#plt.savefig('ana/control/SEexpmut.pdf')
-
-#plt.clf()
 
 #SECUMUL
 if params["SECumul"] and params["Self_Energy"]:
@@ -305,6 +255,76 @@ if params["SECumul"] and params["Self_Energy"]:
 	plt.legend()
 	plt.savefig('ana/control/EpvsOrd.pdf')
 	plt.clf()
+	
+	
+
+#--------------- plot Ep vs ws
+#sample
+data = np.loadtxt('data/Ep/Epvsws')
+plt.errorbar(-data[:, 0], np.mean(data[:, 1:], axis=1), np.std(data[:, 1:], axis=1)/np.sqrt(len(data[0,:])-2), label=r'$E_{pol}$')
+
+# ws Gerade
+def ws_gerade(ws):
+	return ws
+
+peter = np.vectorize(ws_gerade)
+plt.plot(-data[:, 0], peter(-data[:, 0]), 'r-', label=r'$\omega_{pol}$')
+plt.xlabel(r'$-\omega_{pol}$')
+plt.ylabel(r'$-E_{pol}$')
+plt.ylim([ws[-1], ws[1]])
+plt.legend()
+plt.savefig('ana/control/Epvsws>1.pdf')
+
+plt.clf()
+
+#First Order in Mathematica
+if params["BEC_Polaron"]:
+	os.system("math -script BEC_1st_SEomega.m")
+	mat = np.loadtxt('data/Ep/mat_1st_Epvsws')
+	plt.errorbar(-data[:, 0], np.mean(data[:, 1:], axis=1) - mat[:,1], np.std(data[:, 1:], axis=1)/np.sqrt(len(data[0,:])-2), label=r'$E_{pol}$')
+	plt.plot(-data[:, 0], peter(-data[:, 0]), 'r-', label=r'$\omega_{pol}$')
+	plt.xlabel(r'$-\omega_{pol}$')
+	plt.ylabel(r'$-E_{pol}$')
+	plt.legend()
+	plt.savefig('ana/Epvsws.pdf')
+	plt.clf()
+
+
+
+
+if params["Ep_Root"]:
+	#finding root
+	Eps = []
+	for col in data[:,1:].T: 
+		func = interp1d(-data[:,0], col+data[:,0])
+		Eps.append(optimize.newton(func, -params["Chemical_Potential"]))
+	with open('ana/fitparams', 'r+') as fitin:
+		fitin.seek(0,2)
+		fitin.write("\nFrom Sampling")
+		fitin.write("\nE = -" + str(np.mean(Eps)) + " +- "+ str(np.std(Eps)/np.sqrt(len(Eps)-1))+"\n") 
+		
+
+
+#--------------- plot Ep Integrand Statistics
+
+#data = np.loadtxt('data/Ep/Eptest')
+#iti=0
+#for col in data.T[1:]:
+#	plt.plot(data[:, 0], col, label=r'$\omega_{Pol} = %g$' %(ws[iti]))
+#	iti += 1
+#peter = np.loadtxt(peter_loc+ '/mat_FP_1st_seexpmut_w2')
+#plt.plot(peter[:,0], peter[:,1], label="Mat") 
+#plt.yscale('log')
+#plt.xlabel(r'$\tau$')
+#plt.ylabel(r'$\Sigma(\mathbf{p}=0, \tau) e^{(\omega-\mu) \tau} $')
+#plt.xlim([0, 1.5])
+#plt.ylim([1e-2,1000])
+#plt.legend()
+#plt.savefig('ana/control/SEexpmut.pdf')
+
+#plt.clf()
+	
+	
 	
 	#FP Check of Selfeneergy
 if params["Self_Energy"]:
