@@ -4,9 +4,18 @@ void DiagMC::test() {
   try{
 	//std::cout << lu <<std::endl;
 	//diag.printall();
+	
+#ifdef SELFENERGY
+	if (diag.is_reducible()){throw Red();}
+#endif
 	//SECUMUL
 #ifdef SECUMUL
 	if(ordstsz < 1) {throw ossoor();}
+	if((fabs(Data.col(1).sum()-Norms.sum())>1e-8) && (ordstep==0)){
+		std::cout << Data.col(1).sum() << '\t' << Norms.sum() << std::endl;
+		throw oor_g0sum();
+	}
+	std::cout << "Min Max Order Stat Update! " << orderstat(minord) << '\t' << orderstat(maxord) << std::endl;
 #endif
 	//Diagram
 	diag.test(qc); 

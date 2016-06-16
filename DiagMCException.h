@@ -115,10 +115,27 @@ class filepos: public std::exception {
 };
 
 
+class Therm: public std::exception {
+  virtual const char* what() const throw()
+  {
+    return "Thermalization time is bigger than RunTime!";
+  }
+};
 
 
+class Red: public std::exception {
+  virtual const char* what() const throw()
+  {
+    return "The diagramm is reducible!";
+  }
+};
 
-
+class oor_g0sum: public std::exception {
+  virtual const char* what() const throw()
+  {
+    return "Data.sum() and Norms.sum() do not fit!";
+  }
+};
 
 
 

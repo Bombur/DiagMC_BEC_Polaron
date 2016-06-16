@@ -34,6 +34,7 @@
 #include "dvector.h"
 #include "mystructs.h"
 #include "tmap.h"
+#include <alps/accumulators.hpp>
  
 #ifndef __DIAGMC_H_INCLUDED__
 #define __DIAGMC_H_INCLUDED__
@@ -42,6 +43,8 @@ namespace pt = boost::property_tree;
 using namespace Eigen; 
  
 class DiagMC { 
+  typedef alps::accumulators::accumulator_set accumulators_type;
+  
   private: 
 	const double p, mu;			//mu and initial p 	
 	const double qc;	//Q cut off
@@ -71,10 +74,24 @@ class DiagMC {
 
 	//Estimator
 	ArrayXd ws;		    	//different  omegas
-	ArrayXXd Epol; 			//Polaron Energy  Rows: tau, Cols: Estimator for ws
+	ArrayXd Eptmp;			//temporary container for binning
+	ArrayXd Epol; 			//Polaron Energy Estimator for ws
 	ArrayXXd SE;			//Estimator for Self Energy 0: All_Order, 1:1st, 2: >1
-	ArrayXXcd G0SEiw;			//Estimator for Self Energy 0: All_Order, 1:1st, 2: >1
+	ArrayXXcd G0SEiw;			//Estimator for Self Energy 0: All_Order, 1:endl1st, 2: >1
+	//binning
+	accumulators_type counts; //accumulator for norm counts
+	accumulators_type Epbin;  //measured each time
+	//Measure Ep always after a number of steps
+	double last_g0_count;
+	ArrayXd last_measured_Epol;
+	accumulators_type Ep_intv; //measured every 500 times including count number
+	accumulators_type ordesti; //order estimator
 
+	//To Test Error Convergence
+	double last_count_g0attau0;
+	accumulators_type G0tau0; //Test container for G_0(Tau)
+	accumulators_type G0tau0_each;
+	
 	//Parameter
 	const double ctcor;		//maximum correction in ctho
 	const double qcor;		//maximum correction in dq
@@ -99,14 +116,17 @@ class DiagMC {
 	
 	//for fw_adapt
 	//0:minord, 1:maxord
-	std::array<int,2> fw_last;
-	std::array<int,2> fw_counts;
-	double fw_max;
-	double desi_ordrat; // desired order ratio of maxord/minord 
+	const int which_fw_ad; // desired order ratio of maxord/minord 
+	std::vector<int> fw_last;
+	std::vector<double> fw_counts;	//container to keep track of max min ratio
+	const double fw_max;
+	const double desi_rat;
+	std::vector<double> fw_vec;//vec of size ordstepsize for adaption
 #endif
 			
 	//rows of stats: 0:change tau, 1:insert, 2:remove 3:swap, 4:swapoc, 5:swapco, 6:swapoocc, 7:ct_ho, 8:dq , 9:inscrossed, 10: remcrossed, 11:fo_insert, 12:fo_remove
 	ArrayXXd  updatestat; 		//0:attempted, 1:possible, 2:rejected, 3:accepted, 4:acceptance ratio possible, 5:acceptance ratio total  
+	//addition row for accumulators 13:accumulator
 	ArrayXXd overflowstat;  //0:Overflow, 1:Underflow, 2:rejected, 3:accepted, 4:rejected ratio rejected, 5:acceptance ratio accepted
 	ArrayXd orderstat;
 	ArrayXXd qstat;		//0:all Orders, 1: 1st_Order
@@ -128,6 +148,7 @@ class DiagMC {
 	const bool ins_tau2lin;
 	const bool ic_taulin;
 	const bool ic_taucut;
+	const bool fst_Ep_meas;
 
 	std::string lu;				//last update for error message
   public: 
@@ -138,7 +159,10 @@ class DiagMC {
 	
 	//Execution variables
 	const int Meas_its, Test_its, Write_its;
+	const int Ep_meas_it;
+	const bool Ep_bin_each_step;
 	const int RunTime;			//in seconds (in SECUMUL) Time for one order Step
+	const int ThermTime;
   
 	//Cumulative SE Calculation
 	const int normmin; // minimum number of points to do the next step
@@ -158,7 +182,7 @@ class DiagMC {
   
 	void set_av_nei(const double & av_normi, const double & av_endi, const int & ordit); //Sets the averaged number of all threads to the Norm/End of step ordit
 	std::array<double, 2> get_minmax();
- 
+	
 	//returning Data
 	double pref_calc();
 	ArrayXd get_SEib();
@@ -166,13 +190,19 @@ class DiagMC {
 	ArrayXd get_EndDiag();
 	
 	//Fake Weight Adaption
-	bool bool_fw_adapt() {return (desi_ordrat>0)? 1: 0;}
+	int get_which_fw_adapt() {return which_fw_ad;}
 	int fw_adapt();
+	int fw_vec_adapt();
+	double get_fw() {return fw;};
+	std::vector<double> get_fw_vec() {return fw_vec;}
 #endif
 	
 	//DiagMC_config.cpp
 	DiagMC(const int &, const pt::ptree &);
 	~DiagMC();
+	accumulators_type create_empty_Ep_acc();
+	accumulators_type create_empty_count_acc(const int &);
+	accumulators_type create_empty_ordesti(const int &);
 	
 	//DiagMC_updates.cpp
 	double G0el(const std::array< double, 3 > & p, const double & tfin, const double & tinit);
@@ -197,13 +227,23 @@ class DiagMC {
 	int fo_remove();  //first Order Insert
 	
 	//DiagMC_measure.cpp
+	double fw_for_meas(const int & ord, const bool & fw_ad=false);
 	int measure();
 	void meas_histo();
+	void meas_ordstat();
+	void set_os_to_zero();
 	
 	//DiagMC_estimator.cpp
-	void meas_Epol(const double & cor);
+	void fill_Epcont(const double & cor); 
+	void meas_Epol();
 	void meas_SE(const double & cor); 
 	void meas_G0SEiw(const double & cor); 
+	//binning
+	void bin_Epol();
+	void meas_Ep_intv(); // measure just evere Ep_meas_it steps
+	void meas_G0tau0();
+	void meas_G0tau0_each();
+	void meas_ordesti();
 	
 	//DiagMC_io.cpp
 	ArrayXXd get_Data();
@@ -211,9 +251,18 @@ class DiagMC {
 	ArrayXd get_Ep();		//return Polaron Energy depending omegas (per Step for SECUMUL)
 	ArrayXXd get_SE();
 	ArrayXXcd get_G0SEiw();
-	
+	//binning
+	accumulators_type get_counts(); //return accumulator for norm counts
+	accumulators_type get_Epacc(); //return accumulator measuring each time
+	double get_counts_for_Ep_norm(); //to calculate Norm later
+	double get_Ep_norm(); 
+	accumulators_type get_Ep_intv(); //return accumulator measuring sum of Ep_meas_it
+	accumulators_type get_G0tau0();
+	alps::accumulators::result_set get_G0tau0_each();
+	void get_ordesti(const int &);//Write each core seperat
+
 	ArrayXXd get_uds() {return updatestat;}
-	ArrayXXd get_ofs() {return overflowstat;}
+	ArrayXXd get_ofs();
 	ArrayXd get_os() {return orderstat;}
 	ArrayXXd get_qs() {return qstat;}
 	ArrayXXd get_taus();

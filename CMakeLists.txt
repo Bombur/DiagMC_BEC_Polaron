@@ -5,9 +5,6 @@ SET(CMAKE_BUILD_TYPE Release) # Release, Debug or RelWithDebInfo
 #ALPS
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_PREFIX_PATH "/project/theorie/h/H.Guertner/lib/ALPSCore/build")
-find_package(ALPSCore REQUIRED accumulators)
-target_link_libraries(${PROJECT_NAME} ${ALPSCore_LIBRARIES})
-
 
 #Compiler FLAGS
 set(COMP_FLAGS "-std=c++11 -fopenmp")
@@ -107,8 +104,19 @@ include_directories(/project/theorie/h/H.Guertner/BEC_Polaron/src)
 #Source Files
 file(GLOB SOURCES "*.cpp")
 
+#Cscope File
+file(GLOB HEADERS "*.h")
+set(AllFiles ${SOURCES} ${HEADERS})
+string(REPLACE ";" "\n" AllFiles "${AllFiles}")
+file(WRITE ${CMAKE_SOURCE_DIR}/cscope.files.in "${AllFiles}")
+configure_file(${CMAKE_SOURCE_DIR}/cscope.files.in ${CMAKE_SOURCE_DIR}/cscope.files COPYONLY)
+
+#CTags
+set_source_files_properties(tags PROPERTIES GENERATED true)
+add_custom_target(tags COMMAND ctags --declarations -I -l c++ ./src WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} DEPENDS ${PROJECT_NAME})
+
 #create EXE
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-
-
+find_package(ALPSCore REQUIRED accumulators)
+target_link_libraries(${PROJECT_NAME} ${ALPSCore_LIBRARIES})

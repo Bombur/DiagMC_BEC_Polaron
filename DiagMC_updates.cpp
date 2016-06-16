@@ -144,7 +144,7 @@ int DiagMC::ct(){
   }
 
   //weight variables
-  int accept = 0; //-1:metropolis, 0:rejected explim, 1:accepted explim
+  int accept = 0; //-1:metropolis, 0:rejected explim, 1:accepted explim, 2: arg>0
   double weight =1.;
   double arg = (- Efac*(diag.pr_tau2.t - diag.pr_tau1.t));
   
@@ -153,7 +153,7 @@ int DiagMC::ct(){
   //Overflow
   else if (arg >explim) {accept =1; overflowstat(7,0)+=1;}
   //Normal Case
-  else if (arg > 0.) {accept = 1;}
+  else if (arg > 0.) {accept = 2;}
   else{accept =-1;}
   
  
@@ -165,9 +165,9 @@ int DiagMC::ct(){
 	return -1;
   }
   
-  if (accept == 1) {
+  if (accept >0) {
 	updatestat(7,3) +=1;		//accepted
-	overflowstat(7,3) +=1;    //accepted due to overflow
+	if (accept==1) {overflowstat(7,3) +=1;}    //accepted due to overflow
 	diag.ct();
 #ifndef NCHECK
 	global_weight += arg;
@@ -324,6 +324,9 @@ int DiagMC::insert() {
   double n = static_cast<double>(diag.get_order());
   weight *= fw;  //Fake-Weight
   if (n < fwtab.size()) {weight *= fwtab[n];} 
+#ifdef SECUMUL
+  if (which_fw_ad == 2) {weight *= fw_vec[n-minord];} 
+#endif
 
   weight *= Prem/Pins;	
   weight /= (1. + (n+1.)*2.); 	//remove selecting vertex 
@@ -459,6 +462,9 @@ int DiagMC::remove() {
   double n = static_cast<double>(diag.get_order());
   weight /= fw;   // for fake function
   if ((n-1) < fwtab.size()) {weight /= fwtab[n-1];} 
+#ifdef SECUMUL
+  if (which_fw_ad == 2) {weight /= fw_vec[n-minord-1];} 
+#endif
   
   weight *= Pins/Prem;	
   weight /= (1. + (n-1.)*2.); 	//insert selecting vertex 
@@ -766,6 +772,9 @@ int DiagMC::inscrossed() {
   double n = static_cast<double>(diag.get_order());
   weight *= fw;  //Fake-Weight
   if (n < fwtab.size()) {weight *= fwtab[n];} 
+#ifdef SECUMUL
+  if (which_fw_ad == 2) {weight *= fw_vec[n-minord];} 
+#endif
 
   weight *= Pic/Pic;	
   weight /= (1. + (n+1.)*2.); 	//remove selecting vertex 
@@ -922,6 +931,9 @@ int DiagMC::remcrossed() {
   double n = static_cast<double>(diag.get_order());
   weight /= fw;   // for fake function
   if ((n-1) < fwtab.size()) {weight /= fwtab[n-1];} 
+#ifdef SECUMUL
+  if (which_fw_ad == 2) {weight /= fw_vec[n-minord-1];} 
+#endif
   
   weight *= Pic/Prc;	
   weight /= (1. + (n-1.)*2.); 	//insert selecting vertex 
@@ -1024,6 +1036,9 @@ int DiagMC::fo_insert() {
   //order
   weight *= fw;  //Fake-Weight
   weight *= fwtab[0]; 
+#ifdef SECUMUL
+  if (which_fw_ad == 2) {weight *= fw_vec[0];} 
+#endif
 
   weight *= Prem/Pins;	
   weight *= (diag.pr_taufin-taumap.taumin-diag.pr_tauin); //sample first vertex to insert
@@ -1118,6 +1133,9 @@ int DiagMC::fo_remove() {
   //order
   weight /= fw;   // for fake function
   weight /= fwtab[0];
+#ifdef SECUMUL
+  if (which_fw_ad == 2) {weight /= fw_vec[0];} 
+#endif
   
   weight *= Pins/Prem;	
  

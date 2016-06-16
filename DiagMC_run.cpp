@@ -10,6 +10,8 @@
 #include "RunException.h"
 #include "tmap.h"
 #include <assert.h>
+#include <alps/accumulators.hpp>
+#include <alps/hdf5.hpp>
 
 #if defined(_OPENMP)
 #include <omp.h>
@@ -32,7 +34,7 @@ int main() {
 	
 	pt::ptree config;
 	pt::read_json("DiagMC_BEC.json", config);
-  
+	
 	//constants and parameters
 	double onecore_time= 0;
   	
@@ -43,10 +45,9 @@ int main() {
 	#pragma omp parallel for num_threads(nseeds) 
 	for (int seed = 0; seed < nseeds; seed++)
 	{
-		DiagMC_pl[seed] = new DiagMC(seed,config);
-		
 		#pragma omp critical  // to have the same staring point
 		{
+		  DiagMC_pl[seed] = new DiagMC(seed,config);
 		  std::cout << "# Initialized thread " << seed << std::endl;
 		}
 	}
@@ -64,17 +65,40 @@ int main() {
 	//ArrayXXd Eptest = ArrayXXd::Zero(bintemp[bintemp.size()-1], ws.size());
 	std::vector<ArrayXXd> SE(nseeds, ArrayXXd::Zero(bintemp[bintemp.size()-1], 4)); 
 	std::vector<ArrayXXcd> G0SEiw(nseeds, ArrayXXcd::Zero(config.get<int>("Omega_bin"), 3)); 
-
-	ArrayXXd uds_tot = ArrayXXd::Zero(13,6);
-	ArrayXXd ofs_tot = ArrayXXd::Zero(13,6);
-	ArrayXd os_tot = ArrayXd::Zero(config.get<int>("Order_Stat_Size"));
+	
+	//count0 binning
+	alps::accumulators::accumulator_set counts;
+	counts = DiagMC_pl[0]->create_empty_count_acc(0);
+	
+	//Ep Binning
+	alps::accumulators::accumulator_set Epbin;
+	Epbin = DiagMC_pl[0]->create_empty_Ep_acc();
+	
+	//Ep integral binning
+	alps::accumulators::accumulator_set Ep_intv;
+	Ep_intv = DiagMC_pl[0]->create_empty_Ep_acc();
+	
+	//G0 Test Binning container
+	//alps::accumulators::accumulator_set G0tau0;
+	//G0tau0 = DiagMC_pl[0]->get_G0tau0();
+	//alps::accumulators::result_set G0tau0_each;
+	
+	//Statistics
+	ArrayXXd uds_tot = DiagMC_pl[0]->get_uds();
+	ArrayXXd ofs_tot = DiagMC_pl[0]->get_ofs();
+	ArrayXd os_tot = DiagMC_pl[0]->get_os();
 	ArrayXd ts_tot = ArrayXd::Zero(10);
-	ArrayXXd qs_tot = ArrayXXd::Zero(config.get<int>("QStat_Size"), 2);
+	ArrayXXd qs_tot = DiagMC_pl[0]->get_qs();
 	ArrayXXd taus_tot = ArrayXXd::Zero(bintemp[bintemp.size()-1], 5); // Tau Histogram
 	ArrayXXd testhisto = ArrayXXd::Zero(bintemp[bintemp.size()-1]+2, 4);
 	
-	  
+	//Total time Control
+	steady_clock::time_point Cumt_be = steady_clock::now();
+	steady_clock::time_point Cumdt_be = steady_clock::now();
 #ifdef SECUMUL
+	  double Cumt =0.;
+	  double Cumdt= 0.;
+	  
 	  //Statistics and Data for SECUMUL
 	  ArrayXXd SEib = ArrayXXd::Zero(bintemp[bintemp.size()-1],nseeds);
 	  std::vector<ArrayXXd> Norms;
@@ -85,13 +109,8 @@ int main() {
 	  std::vector<double> maxs;
 	  std::vector<double> stptime;
 	  std::vector<double> bottlenecks;
+	  ArrayXXd fw_stat = ArrayXXd::Zero(1, nseeds); 
 
-	  	//Total time Control
-	  steady_clock::time_point Cumt_be = steady_clock::now();  //start time
-	  steady_clock::time_point Cumdt_be;
-	  double Cumt =0.;
-	  double Cumdt= 0.;
-	  
 	  //temporary Containers to transfer Data
 	  ArrayXXd Normstemp(bintemp[bintemp.size()-1],nseeds);
 	  ArrayXXd Endstemp(bintemp[bintemp.size()-1],nseeds);
@@ -108,11 +127,18 @@ int main() {
 	  std::cout << "# Order Loop Starting! "<< std::endl;
 	  do{
 		std::cout <<'\n'<< "# ------ Order Step " << ordit << "------" <<'\n' << std::endl;
-		steady_clock::time_point Cumdt_be = steady_clock::now();
+		Cumdt_be = steady_clock::now();
 		
-		 //temporary Containers to transfer Data
+		//temporary Containers to transfer Data
 		double nnormstemp = 0.;
 	  	double nendstemp = 0.;
+		double nnormstemp2 = 0.;
+	  	double nendstemp2 = 0.;
+		VectorXd fw_stat_tmp= VectorXd::Zero(nseeds);
+		
+		//variable to make all threads to do the next order step at the same time
+		int norm_allthreads=0;
+		int end_allthreads=0;
 #endif
 		
 		
@@ -140,6 +166,8 @@ int main() {
 		bool maxordcheck = false;
 		bool normcheck = false;
 		bool endcheck = false;
+		bool normadd1 = false;
+		bool endadd1 = false;
 		double Tott_check=0.;
 #endif
 		
@@ -216,10 +244,23 @@ int main() {
 			
 		  if ((it%bec->Meas_its) ==0) {
 			steady_clock::time_point t_meas_be= steady_clock::now();
-			//bec->meas_histo(); 
-			meas += bec->measure();
+			double thtime =((t_meas_be-Cumdt_be).count()* steady_clock::period::num / steady_clock::period::den);
+			if (thtime > bec->ThermTime){
+				//bec->meas_histo();
+				meas += bec->measure();
+				bec->meas_ordstat();
+			  	//bec->bin_Epol();
+				if ((meas % bec->Ep_meas_it)==0){
+					//bec->meas_G0tau0();
+					bec->meas_Ep_intv();
+				}
+			} else if (thtime<(bec->ThermTime*0.8)) {
+				bec->meas_ordstat();
+			} else {
+				bec->set_os_to_zero();
+			}	
 			steady_clock::time_point t_meas_end = steady_clock::now();
-			timestat(8) += static_cast<double>((t_meas_end-t_meas_be).count())* steady_clock::period::num / steady_clock::period::den ;
+			timestat(8) += static_cast<double>((t_meas_end-t_meas_be).count())* steady_clock::period::num / steady_clock::period::den;
 		  }
 			
 		  if ( (it%bec->Test_its) ==0) {
@@ -227,11 +268,6 @@ int main() {
 			bec->meas_histo(); 
 			try{
 			  bec->test();
-#ifdef SELFENERGY
-			  if (meas < (bec->Test_its/bec->Meas_its) -1) {
-				std::cerr << meas << '\t'<< bec->Test_its/bec->Meas_its << std::endl;
-				throw meascheck();}
-#endif
 			} catch (std::exception& e){
 			  std::cerr << e.what() << std::endl;
 			  exit(EXIT_FAILURE);
@@ -257,8 +293,6 @@ int main() {
 		  }	
 		  it++;
 
-
-		
 		} while (nseconds < bec->RunTime - dt);
 		
 		#pragma omp critical  // to have the same staring point
@@ -269,6 +303,14 @@ int main() {
 		  //Eptest += bec->get_Eptest();
 		  SE[seed] = bec->get_SE();
 		  G0SEiw[seed] = bec->get_G0SEiw();
+		  
+		  //binning
+		  counts.merge(bec->get_counts());
+		  if (bec->Ep_bin_each_step){Epbin.merge(bec->get_Epacc());}
+		  Ep_intv.merge(bec->get_Ep_intv());
+		  //G0tau0 = bec->get_G0tau0();
+		  //G0tau0_each = bec->get_G0tau0_each();
+		  
 		  uds_tot += bec->get_uds();
 		  ofs_tot += bec->get_ofs();
 		  os_tot += bec->get_os();
@@ -276,18 +318,79 @@ int main() {
 		  qs_tot += bec->get_qs();
 		  taus_tot += bec->get_taus();
 		  testhisto += bec->get_testhisto();
+		  bec->get_ordesti(seed);
 	
 		  onecore_time += nseconds;
 		}
 	  }//end of omp for loop
 	  
+	  std::cout << "Writing binning results" << std::endl;
+	  //count0 binning analysis
+	  alps::accumulators::result_set counts_res(counts);
+	  counts_res["norm0"] *= counts_res["norm0"].count();
+	  
+	  alps::accumulators::result_set Ep_intv_res(Ep_intv);
+
+	  //alps::accumulators::result_set G0tau0_res(G0tau0);
+	  //std::cout << G0tau0_res["tau0"] << std::endl;
+	  //std::cout << G0tau0_each["tau0"] << std::endl;
+	  
+	  std::cout <<"# One result of merged accumulators: " << std::endl;
+	  std::cout << Eptot(5,0) << '\t' << Ep_intv_res["5"].mean<double>() << '\t';
+	  alps::accumulators::result_set Epbin_res(Epbin);
+	  if (DiagMC_pl[0]->Ep_bin_each_step){
+		for (int i=0; i<ws.size(); i++) {
+		  Epbin_res[std::to_string(i)] *= Epbin_res[std::to_string(i)].count()*DiagMC_pl[0]->get_Ep_norm()/counts_res["norm0"].mean<double>();
+		}
+		std::cout << Epbin_res["5"].mean<double>() << '\n' << Epbin_res["5"];
+	  }
+	  std::cout << '\n' << Ep_intv_res["5"] << std::endl;
+	  
+	  // Note the file is opened with write permission.
+	  std::string Ep_filename("data/Ep/Epbin.h5");
+	  alps::hdf5::archive oar(Ep_filename, "a");
+	  oar["Ep"] << Epbin_res;
+	  oar["counts"]<<counts_res;
+	  oar["Ep_intv"]<< Ep_intv_res;
+	  //oar["G0tau0"]<< G0tau0_res;
+	  //oar["G0tau0_each"]<< G0tau0_each;
+	  oar.close();
+	
 	  
 #else	//-------------2nd Part of Order Loop--------------------------
 
 		  if ( (it%bec->Write_its) ==0) {
 			//fw_adapt()
-			if (bec->bool_fw_adapt()) {bec->fw_adapt();}
+			double thtime =static_cast<double>((steady_clock::now()-Cumdt_be).count())* steady_clock::period::num / steady_clock::period::den;
+			if (thtime < (0.8*bec->ThermTime)){ 
+				if (bec->get_which_fw_adapt()==1) {bec->fw_adapt();}
+				else if (bec->get_which_fw_adapt()==2) {bec->fw_vec_adapt();}
+			} else if (thtime > bec->ThermTime){
+				//Check if Norm and End numbers are reached
+				if ((bec->get_normostat() > bec->normmin-1) && !normadd1) {
+					normadd1 = true;
+					#pragma omp atomic update
+						norm_allthreads++;
+				}
+				if ((bec->get_endostat() > bec->endmin-1) && !endadd1) {
+					endadd1 = true;
+					#pragma omp atomic update
+						end_allthreads++;
+				}
 			
+				int ntmp;
+				int etmp;
+				#pragma omp atomic read
+					ntmp = norm_allthreads;
+				#pragma omp atomic read
+					etmp = end_allthreads;
+			  
+				if (ntmp == nseeds) {normcheck = true;} // checking if we reached the norm minimum
+				if (etmp == nseeds) {endcheck = true;} // checking if we reached the end minimum
+				std::cout <<'\n' << bec->get_normostat() << '\t' << bec->normmin-1 << '\t' << bec->get_endostat() << '\t'<< bec->endmin-1 << std::endl;
+				std::cout << normadd1 << '\t' << ntmp << '\t'<< endadd1 << '\t'<< etmp << '\n' << std::endl;
+			}
+
 			//time 
 			steady_clock::time_point time_end = steady_clock::now();
 			nseconds = static_cast<double>(duration_cast<seconds>(time_end-time_begin).count());
@@ -296,9 +399,7 @@ int main() {
 		  
 			std::cout << "# " << seed<<  ": Time in Order Step  " << nseconds << '\t' << "dt  " << dt << '\n' << std::endl;
 			dt_be = steady_clock::now();
-			if (bec->get_normostat() > bec->normmin-1) {normcheck = true;} // checking if we reached the norm minimum
-			if (bec->get_endostat() > bec->endmin-1) {endcheck = true;} // checking if we reached the end minimum
-
+			
 			//To check Total Run Time
 			steady_clock::time_point Tott_check_end = steady_clock::now();
 			Tott_check = static_cast<double>(duration_cast<seconds>(Tott_check_end-Cumt_be).count());
@@ -322,15 +423,24 @@ int main() {
 		  //first we need to calculate the normalization
 		  nnormstemp += bec->normcalc(); 
 		  nendstemp += bec->endcalc();
+		  nnormstemp2 += bec->get_normostat(); 
+		  nendstemp2 += bec->get_endostat();
 		  
-		  if (ordit == 0) {Data_tot[seed] = bec->get_Data();}
 		  Eptot.col(seed) += bec->get_Ep();
+		  if (ordit == 0) {Data_tot[seed] = bec->get_Data();}
 		  ArrayXXd tmp = bec->get_SE();
 		  SE[seed].rightCols(tmp.cols()-1) += tmp.rightCols(tmp.cols()-1);
 		  SE[seed].col(0) = tmp.col(0);
 		  ArrayXXcd tmp2 = bec->get_G0SEiw(); 
 		  G0SEiw[seed].rightCols(tmp2.cols()-1) += tmp2.rightCols(tmp2.cols()-1);
 		  G0SEiw[seed].col(0) = tmp2.col(0); 
+		  
+		  //binning
+		  if (bec->Ep_bin_each_step){Epbin.merge(bec->get_Epacc());}
+		  Ep_intv.merge(bec->get_Ep_intv());
+		  counts.merge(bec->get_counts());
+		  
+		  //stats
 		  uds_tot += bec->get_uds();
 		  ofs_tot += bec->get_ofs();
 		  os_tot += bec->get_os();
@@ -339,6 +449,8 @@ int main() {
 		  tmp = bec->get_taus();
 		  taus_tot.rightCols(tmp.cols()-1) += tmp.rightCols(tmp.cols()-1);
 		  taus_tot.col(0) = tmp.col(0);
+		  fw_stat_tmp(seed) = bec->get_fw();
+		  bec->get_ordesti(seed);
 	
 		  onecore_time += nseconds;
 		  
@@ -376,13 +488,45 @@ int main() {
 		  }	
 		  nnormstemp /= static_cast<double>(nseeds);
 		  nendstemp /= static_cast<double>(nseeds);
-		  nnorms.push_back(nnormstemp);
-		  nends.push_back(nendstemp);
+		  nnorms.push_back(nnormstemp2);
+		  nends.push_back(nendstemp2);
 		  mins.push_back((DiagMC_pl[0]->get_minmax())[0]);
 		  maxs.push_back((DiagMC_pl[0]->get_minmax())[1]);
+		  eigen_push_back(fw_stat, fw_stat_tmp);
 		  std::cout << "# Combined Data!" << std::endl;
 		}
-			
+			  
+		std::cout << "# Writing binning results ..." << std::endl;
+		//count binning analysis
+		alps::accumulators::result_set counts_res(counts);
+		counts_res["norm"+std::to_string(ordit)] *= counts_res["norm"+std::to_string(ordit)].count();
+		counts_res["end"+std::to_string(ordit)] *= counts_res["end"+std::to_string(ordit)].count();
+		
+		std::cout << "# Counts comparison: " << nnormstemp*static_cast<double>(nseeds) << '\t' << counts_res["norm"+std::to_string(ordit)].mean<double>()<<std::endl;
+		
+		alps::accumulators::result_set Ep_intv_res(Ep_intv);
+
+		alps::accumulators::result_set Epbin_res(Epbin);
+		if (DiagMC_pl[0]->Ep_bin_each_step){
+		  for (int i=0; i<ws.size(); i++) {Epbin_res[std::to_string(i)] *= Epbin_res[std::to_string(i)].count()*DiagMC_pl[0]->get_Ep_norm()/counts_res["norm"+std::to_string(ordit)].mean<double>();}
+		  std::cout << Epbin_res["5"].mean<double>() << '\n' << Epbin_res["5"];
+		}
+		std::cout << '\n' << Ep_intv_res["5"] << std::endl;
+	
+		// Note the file is opened with write permission.
+		std::cout << "# Writing binning results"<< std::endl;
+		std::string filename("data/Ep/Epbin.h5");
+		alps::hdf5::archive oar(filename, "a");
+		oar["Ep/step"+std::to_string(ordit)] << Epbin_res;
+		oar["counts"] << counts_res;
+		oar["Ep_intv/step"+std::to_string(ordit)] << Ep_intv_res;
+		oar.close();
+		
+		//setting binning container to zero again
+		Epbin = DiagMC_pl[0]->create_empty_Ep_acc();
+		Ep_intv = DiagMC_pl[0]->create_empty_Ep_acc();
+		counts = DiagMC_pl[0]->create_empty_count_acc(ordit+1);
+		
 		// time per  order step
 		steady_clock::time_point Cumdt_end = steady_clock::now();
 		Cumdt = static_cast<double>(duration_cast<seconds>(Cumdt_end-Cumdt_be).count());
@@ -440,7 +584,6 @@ int main() {
 		
 		} while ((Cumt < DiagMC_pl[0]->TotRunTime - Cumdt) && (TotMaxOrdcheck != ordit) );
 #endif
-	   
 	  
 	  //Deleting the vector of DiagMC Pointers
 	  #pragma omp for ordered schedule(static, 1)
@@ -769,6 +912,7 @@ int main() {
 	  ofs_outfile << name << ": " <<'\t'<< ofs_tot.block(it, 0, 1, 6) << '\n';
 	  it++;
 	}
+	ofs_outfile << "Ep binning: " <<'\t'<< ofs_tot.block(13, 0, 1, 6) << '\n';
     ofs_outfile << '\n';
 	
 	MatrixXd orderprint(os_tot.size(),2);
@@ -820,9 +964,13 @@ int main() {
 	minmax_outfile << "Min \t Max  \t nMin \t nMax \t time [s] \t Bottleneck \t nRatio\n" ;
 	minmax_outfile << minmax_out;
 	minmax_outfile.close();
+	
+	std::ofstream fw_outfile("data/stats/fw_stat");
+	fw_outfile << fw_stat;
+	fw_outfile.close();
 #endif	
 	
-	std::cout << "# Analysing data, result = " << system(config.get<std::string>("Ana_File").c_str()) << std::endl;
+//	std::cout << "# Analysing data, result = " << system(config.get<std::string>("Ana_File").c_str()) << std::endl;
   
 	return 0;
 }

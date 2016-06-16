@@ -36,11 +36,10 @@ ArrayXXd DiagMC::get_Eptest() {
 }
 
 ArrayXd DiagMC::get_Ep() {
-  ArrayXXd output = Epol;
 #ifdef SECUMUL
-  return output.colwise().sum() *(G0ptmima/G0p2arms) *pref_calc();
+  return Epol *(G0ptmima/G0p2arms)* pref_calc();
 #else
-  return output.colwise().sum() *(G0ptmima/G0p2arms) /Data.col(1).sum();
+  return Epol *(G0ptmima/G0p2arms) /Data.col(1).sum();
 #endif
 }
 
@@ -73,7 +72,63 @@ ArrayXXcd DiagMC::get_G0SEiw() {
   return output;  
 }
 
+//binning
+alps::accumulators::accumulator_set DiagMC::get_counts(){
+  alps::accumulators::accumulator_set tmp;
+  tmp = counts;
+  return tmp;
+}  
 
+alps::accumulators::accumulator_set DiagMC::get_Epacc(){
+  alps::accumulators::accumulator_set tmp;
+  tmp = Epbin;
+  return tmp;
+}
+
+double DiagMC::get_counts_for_Ep_norm(){
+#ifdef SECUMUL
+  return 1./pref_calc();
+#else
+  return Data.col(1).sum();
+#endif
+}
+
+double DiagMC::get_Ep_norm(){
+  return G0ptmima/G0p2arms;
+}
+
+alps::accumulators::accumulator_set DiagMC::get_Ep_intv(){
+  alps::accumulators::accumulator_set tmp;
+  tmp = Ep_intv;
+  return tmp;
+}
+
+alps::accumulators::accumulator_set DiagMC::get_G0tau0(){
+  alps::accumulators::accumulator_set tmp;
+  tmp = G0tau0;
+  return tmp;
+}
+
+alps::accumulators::result_set DiagMC::get_G0tau0_each(){
+  alps::accumulators::result_set tmp(G0tau0_each);
+  ArrayXd norm = taumap.norm_table();
+  tmp["tau0"]*=G0ptmima*norm(0);
+  return tmp;
+}
+
+void DiagMC::get_ordesti(const int & thread){
+  alps::accumulators::result_set tmp(ordesti);
+  alps::hdf5::archive oar("data/stats/ord_esti.h5", "a");
+  oar["Core"+std::to_string(thread)] << tmp;
+  oar.close();
+}
+
+
+
+ArrayXXd DiagMC::get_ofs(){
+  overflowstat(13,2) = overflowstat(13,1)/overflowstat(13,0);
+  return overflowstat;
+}
 
 //tau Histogram
 ArrayXXd DiagMC::get_taus() {

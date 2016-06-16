@@ -5,18 +5,28 @@ namespace pt = boost::property_tree;
 DiagMC::DiagMC(const int & thread, const pt::ptree & config):p(config.get<double>("Momentum")), qc(config.get<double>("Q_Cutoff")), mu(config.get<double>("Chemical_Potential")), alpha(config.get<double>("Alpha")), relm(config.get<double>("Impurity_Mass")),
 										wmax(config.get<double>("Omega_max")), wbin(config.get<int>("Omega_bin")), 
 										maxord(config.get<int>("Max_Order")),  
+										Ep_bin_each_step(config.get<bool>("Ep_bin_in_each_step")),
 										ctcor(config.get<double>("Correction_tau")),  qcor(config.get<double>("Correction_dq")),  dtins(config.get<double>("Insert_FP_DT")), dqins(config.get<double>("Insert_QRange")), 
 										fw(config.get<double>("Fake_Weight")),
 										qsigma(config.get<int>("Q_Gauss")), explim(config.get<double>("Exp_Arg_Limit")), doitlim(config.get<int>("Do_While_Limit")),
 										fo_insrem(config.get<bool>("FO_InsRem")), fog0seg0(config.get<bool>("FOG0SEG0")),
 										ct_taucut(config.get<bool>("CT_Tau_Cut")),ct_lin(config.get<bool>("CT_Tau_Linear")),ins_tau2cut(config.get<bool>("Ins_Tau2_Cut")),ins_tau2lin(config.get<bool>("Ins_Tau2_Linear")),ic_taulin(config.get<bool>("IC_Tau2_Linear")),ic_taucut(config.get<bool>("IC_Tau2_Cut")),
+										fst_Ep_meas(config.get<bool>("1st_Ep_meas")),
 										Prem(config.get<double>("Remove_Probability")), Pins(config.get<double>("Insert_Probability")), Pct(config.get<double>("Change_tau_Probability")), Pctho(config.get<double>("Change_tau_in_HO_Probability")), Psw(config.get<double>("Swap_Probability")), Pdq(config.get<double>("DQ_Probability")), Pic(config.get<double>("IC_Probability")), Prc(config.get<double>("RC_Probability")),
-										Meas_its(config.get<int>("Its_per_Measure")), Test_its(config.get<int>("Its_per_Test")), Write_its(config.get<int>("Its_per_Write")), RunTime(config.get<int>("RunTime")),
-										ordstsz(config.get<int>("Order_Step_Size")), normmin(config.get<int>("Norm_Points")/config.get<int>("NCores")), endmin(config.get<int>("End_Points")/config.get<int>("NCores")), TotRunTime(config.get<int>("Total_Time")), TotMaxOrd(config.get<int>("Total_Max_Order")),
+										Meas_its(config.get<int>("Its_per_Measure")), Test_its(config.get<int>("Its_per_Test")), Write_its(config.get<int>("Its_per_Write")), Ep_meas_it(config.get<int>("Ep_Meas")),
+										RunTime(config.get<int>("RunTime")), ThermTime(config.get<int>("Therm_Time")),
+										ordstsz(config.get<int>("Order_Step_Size")), normmin(static_cast<int>(config.get<double>("Norm_Points")/config.get<double>("NCores"))), endmin(static_cast<int>(config.get<double>("End_Points")/config.get<double>("NCores"))), TotRunTime(config.get<int>("Total_Time")), TotMaxOrd(config.get<int>("Total_Max_Order")),
+										which_fw_ad(config.get<int>("Which_fw_adapt()")), desi_rat(config.get<double>("Desi_fw_rat")),fw_max(config.get<double>("Fake_Weight_Max")),
 										taumap(tmap(create_fvec(config), as_vector<int>(config, "Bins"), as_vector<double>(config, "Taus"), config.get<int>("Tminit"), config.get<int>("Tmaxit")))
 { 
   try{
 	if (fabs(1-Prem-Pins-Pct -Pctho -Pic -Prc - Pdq-Psw) > 0.0000000001) {throw oor_Probs();}
+#ifdef SECUMUL
+	if (ThermTime > TotRunTime)
+#else
+	if (ThermTime > RunTime)
+#endif
+	{throw Therm();}
 
 #ifdef FP
 	mass = 1.;
@@ -47,9 +57,20 @@ DiagMC::DiagMC(const int & thread, const pt::ptree & config):p(config.get<double
 	//Estimator
 	std::vector<double> wstmp = as_vector<double>(config, "Ws_for_Epol");
 	ws = Map<const Array<double, 1, Dynamic> > (wstmp.data(), wstmp.size());
-	Epol = ArrayXXd::Zero(taumap.taubin, ws.size());
+	Eptmp = ArrayXd::Zero(ws.size());
+	Epol = ArrayXd::Zero(ws.size());
 	SE = ArrayXXd::Zero(taumap.taubin, 3);
 	G0SEiw = ArrayXXcd::Zero(wbin, 2);
+	//binning
+	counts = create_empty_count_acc(0);
+	Epbin = create_empty_Ep_acc(); //this is just possible if ws was initialzed before
+	last_g0_count =0.;
+	last_measured_Epol = Epol;
+	Ep_intv = create_empty_Ep_acc();
+	last_count_g0attau0 = 0.;
+	G0tau0 << alps::accumulators::FullBinningAccumulator<double>("tau0");
+	G0tau0_each << alps::accumulators::LogBinningAccumulator<double>("tau0");
+	ordesti = create_empty_ordesti(0);
 
 	//Fake_Weight_vector
 	int start = config.get<int>("Fake_Weight_to_ord.start");
@@ -64,10 +85,11 @@ DiagMC::DiagMC(const int & thread, const pt::ptree & config):p(config.get<double
 	minord = 0;
 	ordstep = 0;
 #ifdef SECUMUL
-	if ((TotMaxOrd < ordstsz) && (TotMaxOrd > 0)) {
-	  maxord = TotMaxOrd;
+	if (config.get<bool>("1st_Step_Max_Ord")){
+		if ((maxord>TotMaxOrd) && (TotMaxOrd>0)) {maxord = TotMaxOrd;}
 	} else {
-	  maxord = minord + ordstsz;
+		if ((TotMaxOrd < ordstsz) && (TotMaxOrd > 0)) {maxord = TotMaxOrd;}
+	   	else {maxord = minord + ordstsz;}
 	}
 	SEib= ArrayXd::Zero(taumap.taubin);
 	Norms = ArrayXd::Zero(taumap.taubin);
@@ -75,14 +97,19 @@ DiagMC::DiagMC(const int & thread, const pt::ptree & config):p(config.get<double
 	nnorms.assign(1, 0.);
 	nends.assign(1, 0.);
 	
-	fw_last.fill(0);
-	fw_counts.fill(0.);
-	fw_max = config.get<double>("Fake_Weight_Max");
-	desi_ordrat= config.get<double>("Desired_Min_Max_Ratio");
+	if (which_fw_ad==1) {
+		fw_last.assign(2, 0);
+		fw_counts.assign(2, 0.);
+	} else if (which_fw_ad ==2){
+		fw_last.assign(maxord-minord+1, 0);
+		fw_counts.assign(maxord-minord+1, 0.);
+	}
+	fw_vec.assign(maxord-minord, 1.);
 #endif
   
-	updatestat = ArrayXXd::Zero(13,6);
-	overflowstat = ArrayXXd::Zero(13,6);
+	updatestat = ArrayXXd::Zero(14,6);
+	overflowstat = updatestat;
+	updatestat.row(13) = ArrayXd::Ones(6);
 	orderstat = ArrayXd::Zero(config.get<int>("Order_Stat_Size"));
 	qstat = ArrayXXd::Zero(config.get<int>("QStat_Size"),2);
 	tstat = ArrayXXd::Zero(taumap.taubin,4);
@@ -102,5 +129,26 @@ DiagMC::DiagMC(const int & thread, const pt::ptree & config):p(config.get<double
 
 DiagMC::~DiagMC() {
 
+}
+
+alps::accumulators::accumulator_set DiagMC::create_empty_Ep_acc(){
+  accumulators_type Ep_empty;
+  for (int i=0; i<ws.size(); i++) {
+	Ep_empty << alps::accumulators::LogBinningAccumulator<double>(std::to_string(i));
+  }
+  return Ep_empty;
+}
+
+alps::accumulators::accumulator_set DiagMC::create_empty_count_acc(const int & order){
+  accumulators_type count_empty;
+  count_empty << alps::accumulators::LogBinningAccumulator<double>("norm"+std::to_string(order));
+  count_empty << alps::accumulators::LogBinningAccumulator<double>("end"+std::to_string(order));
+  return count_empty;
+}
+
+alps::accumulators::accumulator_set DiagMC::create_empty_ordesti(const int & order){
+  accumulators_type ordesti_empty;
+  ordesti_empty << alps::accumulators::LogBinningAccumulator<double>("step"+std::to_string(order));
+  return ordesti_empty;
 }
 

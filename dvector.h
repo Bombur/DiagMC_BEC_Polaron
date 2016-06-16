@@ -10,12 +10,15 @@
 #include <vector>
 #include <array>
 #include <cmath>
+#include "/project/theorie/h/H.Guertner/lib/Eigen/Eigen/Dense"
 
 //template
 #include <type_traits>
 
 #ifndef __DVECTOR_H_INCLUDED__
 #define __DVECTOR_H_INCLUDED__
+
+using namespace Eigen; 
 
 //is_container()
 
@@ -147,6 +150,8 @@ std::ostream& operator<<(std::ostream& os, const vecvecT & vec) {
   return os;
 }
 
+//Push back for Eigen::Array
+void eigen_push_back(ArrayXXd & array, const VectorXd & values); 
 
 
 #endif

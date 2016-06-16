@@ -2,12 +2,14 @@
  
 //Estimators
 //Polaron Energy
-void DiagMC::meas_Epol(const double & cor){
+void DiagMC::fill_Epcont(const double & cor){
   double Eptau = diag.get_tinit(2*diag.get_order()) - diag.get_tinit(1);
-  if (diag.get_order() == 1) {
-	Epol.row(taumap.bin(Eptau)) += ((ws*Eptau - mu*Eptau).unaryExpr(std::ptr_fun(expfun)) *cor);
-  } else {
-	Epol.row(taumap.bin(Eptau)) += ((ws*Eptau - mu*Eptau).unaryExpr(std::ptr_fun(expfun)) *cor);
+  Eptmp = ((ws*Eptau - mu*Eptau).unaryExpr(std::ptr_fun(expfun)) *cor);
+}
+
+void DiagMC::meas_Epol(){
+  if (((diag.get_order() == 1) && fst_Ep_meas) || (diag.get_order()>1)) {
+	Epol += Eptmp;
   }
 }
 
@@ -38,4 +40,51 @@ void DiagMC::meas_G0SEiw(const double & cor){
 	  G0SEiw(it, 0) += cor * std::exp((i * static_cast<double>(it)/static_cast<double>(wbin)*wmax) * G0SEtau);
 	}
   }
+}
+
+
+//binning
+void DiagMC::bin_Epol(){
+  	if (((diag.get_order() == 1) && fst_Ep_meas) || (diag.get_order()>1)) {
+		for(int it=0; it < ws.size(); it++){Epbin[std::to_string(it)] << Eptmp(it);}
+	}
+}
+
+//measure Ep as integral
+void DiagMC::meas_Ep_intv() {
+#ifndef SECUMUL
+  double denominator = (Data.col(1).sum()-last_g0_count);
+#else
+  double denominator = (Norms.sum()-last_g0_count);
+#endif
+  overflowstat(13,0)+=1;
+  if (denominator < 1e-8) {overflowstat(13,1)+=1;}
+  else {
+	for(int it=0; it < ws.size(); it++) {
+	  Ep_intv[std::to_string(it)] << (Epol(it)-last_measured_Epol(it))*get_Ep_norm()/denominator;
+	}
+  }
+  last_g0_count += denominator;
+  last_measured_Epol = Epol;
+}
+
+void DiagMC::meas_G0tau0() {
+  double denominator = (Data.col(1).sum()-last_g0_count);
+  if (!(denominator < 1e-8)) {
+	ArrayXd tmp= taumap.norm_table();
+	G0tau0["tau0"] << (Data(0,1)-last_count_g0attau0)*G0ptmima/denominator*tmp(0);
+  }
+  last_count_g0attau0 = Data(0,1);
+}
+
+void DiagMC::meas_G0tau0_each() {
+  if (taumap.bin(diag.get_tau()) == 0){
+	G0tau0_each["tau0"]<<1.;
+  } else {
+	G0tau0_each["tau0"]<<0.;
+  }
+}
+ 
+void DiagMC::meas_ordesti(){
+	ordesti["step"+std::to_string(ordstep)] << diag.get_order();
 }
