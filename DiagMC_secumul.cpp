@@ -12,15 +12,15 @@ void DiagMC::ord_step() {
   Norms = ArrayXd::Zero(taumap.taubin);
   Ends = ArrayXd::Zero(taumap.taubin);
   
-  Epol = ArrayXd::Zero(ws.size());
+  Epol.assign(ws.size(), 0.);
   SE = ArrayXXd::Zero(taumap.taubin, SE.cols());
   G0SEiw = ArrayXXcd::Zero(wbin, G0SEiw.cols());
   
   counts = create_empty_count_acc(ordstep);
-  Epbin = create_empty_Ep_acc();
+  Epbin = create_empty_Ep_acc("step" + std::to_string(ordstep));
   last_g0_count = 0.;
   last_measured_Epol = Epol;
-  Ep_intv = create_empty_Ep_acc();
+  Ep_intv = create_empty_Ep_acc("step" + std::to_string(ordstep));
   ordesti = create_empty_ordesti(ordstep);
   
   updatestat = ArrayXXd::Zero(updatestat.rows(),updatestat.cols());
@@ -116,6 +116,7 @@ int DiagMC::fw_adapt(){
 int DiagMC::fw_vec_adapt(){
 	std::cout << "------------------Fake Weight Vec Adapt!"  << '\n';
   std::cout << "Old fw_vec:\n" << fw_vec << std::endl;
+  std::cout << "Desired Ratio:\n" << pow(desi_rat, 1./(maxord-minord)) << std::endl;
   std::cout << "Calculated Min_Max_Ratio:\n(";
   fw_counts[0] = orderstat(minord);
   for (int orddiff = 1; orddiff <=(maxord-minord); orddiff++){

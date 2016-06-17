@@ -27,19 +27,20 @@ ArrayXXd DiagMC::get_Data() {
 }
 
 //Polaron Energy Estimator
-ArrayXXd DiagMC::get_Eptest() {
+/*ArrayXXd DiagMC::get_Eptest() {
   ArrayXXd output = Epol;
   for (int i=0 ; i< Epol.cols() ; i++) {
 	output.col(i+1) *= taumap.norm_table();
   }
   return output *(G0ptmima/G0p2arms) / Data.col(1).sum();
-}
+}*/
 
 ArrayXd DiagMC::get_Ep() {
+  ArrayXd output = Map<ArrayXd> (Epol.data(), Epol.size());
 #ifdef SECUMUL
-  return Epol *(G0ptmima/G0p2arms)* pref_calc();
+  return output *(G0ptmima/G0p2arms)* pref_calc();
 #else
-  return Epol *(G0ptmima/G0p2arms) /Data.col(1).sum();
+  return output *(G0ptmima/G0p2arms) /Data.col(1).sum();
 #endif
 }
 

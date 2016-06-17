@@ -57,16 +57,16 @@ DiagMC::DiagMC(const int & thread, const pt::ptree & config):p(config.get<double
 	//Estimator
 	std::vector<double> wstmp = as_vector<double>(config, "Ws_for_Epol");
 	ws = Map<const Array<double, 1, Dynamic> > (wstmp.data(), wstmp.size());
-	Eptmp = ArrayXd::Zero(ws.size());
-	Epol = ArrayXd::Zero(ws.size());
-	SE = ArrayXXd::Zero(taumap.taubin, 3);
+	Eptmp.assign(ws.size(), 0.);
+	Epol.assign(ws.size(), 0.);
+	SE = ArrayXXd::Zero(taumap.taubin,3);
 	G0SEiw = ArrayXXcd::Zero(wbin, 2);
 	//binning
 	counts = create_empty_count_acc(0);
-	Epbin = create_empty_Ep_acc(); //this is just possible if ws was initialzed before
+	Epbin = create_empty_Ep_acc("step0"); //this is just possible if ws was initialzed before
 	last_g0_count =0.;
 	last_measured_Epol = Epol;
-	Ep_intv = create_empty_Ep_acc();
+	Ep_intv = create_empty_Ep_acc("step0");
 	last_count_g0attau0 = 0.;
 	G0tau0 << alps::accumulators::FullBinningAccumulator<double>("tau0");
 	G0tau0_each << alps::accumulators::LogBinningAccumulator<double>("tau0");
@@ -131,11 +131,9 @@ DiagMC::~DiagMC() {
 
 }
 
-alps::accumulators::accumulator_set DiagMC::create_empty_Ep_acc(){
+alps::accumulators::accumulator_set DiagMC::create_empty_Ep_acc(const std::string & name){
   accumulators_type Ep_empty;
-  for (int i=0; i<ws.size(); i++) {
-	Ep_empty << alps::accumulators::LogBinningAccumulator<double>(std::to_string(i));
-  }
+  Ep_empty << alps::accumulators::LogBinningAccumulator<std::vector<double>>(name);
   return Ep_empty;
 }
 

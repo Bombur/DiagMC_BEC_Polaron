@@ -4,7 +4,9 @@
 //Polaron Energy
 void DiagMC::fill_Epcont(const double & cor){
   double Eptau = diag.get_tinit(2*diag.get_order()) - diag.get_tinit(1);
-  Eptmp = ((ws*Eptau - mu*Eptau).unaryExpr(std::ptr_fun(expfun)) *cor);
+  for (int i=0; i<ws.size(); ++i){
+	  Eptmp[i] = (expfun(ws(i)*Eptau - mu*Eptau) *cor);
+  }
 }
 
 void DiagMC::meas_Epol(){
@@ -17,8 +19,8 @@ void DiagMC::meas_Epol(){
 void DiagMC::meas_SE(const double & cor){
   double SEtaubin = taumap.bin(diag.get_tinit(2*diag.get_order()) - diag.get_tinit(1));
   if (diag.get_order() == 1) {
-	SE(SEtaubin, 0) += (cor); //all Sigma
-	SE(SEtaubin, 1) += (cor); //Sigma order ==1
+	SE(SEtaubin, 0) += cor; //all Sigma
+	SE(SEtaubin, 1) += cor; //Sigma order ==1
 
   } else if (diag.get_order() > 1){
 	SE(SEtaubin, 0) += cor; //all Sigma
@@ -46,7 +48,7 @@ void DiagMC::meas_G0SEiw(const double & cor){
 //binning
 void DiagMC::bin_Epol(){
   	if (((diag.get_order() == 1) && fst_Ep_meas) || (diag.get_order()>1)) {
-		for(int it=0; it < ws.size(); it++){Epbin[std::to_string(it)] << Eptmp(it);}
+		Epbin["step"+std::to_string(ordstep)] << Eptmp;
 	}
 }
 
@@ -60,9 +62,7 @@ void DiagMC::meas_Ep_intv() {
   overflowstat(13,0)+=1;
   if (denominator < 1e-8) {overflowstat(13,1)+=1;}
   else {
-	for(int it=0; it < ws.size(); it++) {
-	  Ep_intv[std::to_string(it)] << (Epol(it)-last_measured_Epol(it))*get_Ep_norm()/denominator;
-	}
+	Ep_intv["step"+std::to_string(ordstep)] << (Epol-last_measured_Epol)*get_Ep_norm()/denominator;
   }
   last_g0_count += denominator;
   last_measured_Epol = Epol;

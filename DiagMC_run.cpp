@@ -72,11 +72,11 @@ int main() {
 	
 	//Ep Binning
 	alps::accumulators::accumulator_set Epbin;
-	Epbin = DiagMC_pl[0]->create_empty_Ep_acc();
+	Epbin = DiagMC_pl[0]->create_empty_Ep_acc("step0");
 	
 	//Ep integral binning
 	alps::accumulators::accumulator_set Ep_intv;
-	Ep_intv = DiagMC_pl[0]->create_empty_Ep_acc();
+	Ep_intv = DiagMC_pl[0]->create_empty_Ep_acc("step0");
 	
 	//G0 Test Binning container
 	//alps::accumulators::accumulator_set G0tau0;
@@ -249,7 +249,6 @@ int main() {
 				//bec->meas_histo();
 				meas += bec->measure();
 				bec->meas_ordstat();
-			  	//bec->bin_Epol();
 				if ((meas % bec->Ep_meas_it)==0){
 					//bec->meas_G0tau0();
 					bec->meas_Ep_intv();
@@ -335,23 +334,18 @@ int main() {
 	  //std::cout << G0tau0_res["tau0"] << std::endl;
 	  //std::cout << G0tau0_each["tau0"] << std::endl;
 	  
-	  std::cout <<"# One result of merged accumulators: " << std::endl;
-	  std::cout << Eptot(5,0) << '\t' << Ep_intv_res["5"].mean<double>() << '\t';
 	  alps::accumulators::result_set Epbin_res(Epbin);
 	  if (DiagMC_pl[0]->Ep_bin_each_step){
-		for (int i=0; i<ws.size(); i++) {
-		  Epbin_res[std::to_string(i)] *= Epbin_res[std::to_string(i)].count()*DiagMC_pl[0]->get_Ep_norm()/counts_res["norm0"].mean<double>();
+		 Epbin_res["step0"] *= Epbin_res["step0"].count()*DiagMC_pl[0]->get_Ep_norm()/counts_res["norm0"].mean<double>();
 		}
-		std::cout << Epbin_res["5"].mean<double>() << '\n' << Epbin_res["5"];
 	  }
-	  std::cout << '\n' << Ep_intv_res["5"] << std::endl;
 	  
 	  // Note the file is opened with write permission.
 	  std::string Ep_filename("data/Ep/Epbin.h5");
 	  alps::hdf5::archive oar(Ep_filename, "a");
 	  oar["Ep"] << Epbin_res;
 	  oar["counts"]<<counts_res;
-	  oar["Ep_intv"]<< Ep_intv_res;
+	  oar["Ep_intv"] << Ep_intv_res;
 	  //oar["G0tau0"]<< G0tau0_res;
 	  //oar["G0tau0_each"]<< G0tau0_each;
 	  oar.close();
@@ -496,7 +490,6 @@ int main() {
 		  std::cout << "# Combined Data!" << std::endl;
 		}
 			  
-		std::cout << "# Writing binning results ..." << std::endl;
 		//count binning analysis
 		alps::accumulators::result_set counts_res(counts);
 		counts_res["norm"+std::to_string(ordit)] *= counts_res["norm"+std::to_string(ordit)].count();
@@ -508,23 +501,21 @@ int main() {
 
 		alps::accumulators::result_set Epbin_res(Epbin);
 		if (DiagMC_pl[0]->Ep_bin_each_step){
-		  for (int i=0; i<ws.size(); i++) {Epbin_res[std::to_string(i)] *= Epbin_res[std::to_string(i)].count()*DiagMC_pl[0]->get_Ep_norm()/counts_res["norm"+std::to_string(ordit)].mean<double>();}
-		  std::cout << Epbin_res["5"].mean<double>() << '\n' << Epbin_res["5"];
+			Epbin_res["step"+std::to_string(ordit)] *= Epbin_res["step"+std::to_string(ordit)].count()*DiagMC_pl[0]->get_Ep_norm()/counts_res["norm"+std::to_string(ordit)].mean<double>();
 		}
-		std::cout << '\n' << Ep_intv_res["5"] << std::endl;
 	
 		// Note the file is opened with write permission.
 		std::cout << "# Writing binning results"<< std::endl;
 		std::string filename("data/Ep/Epbin.h5");
 		alps::hdf5::archive oar(filename, "a");
-		oar["Ep/step"+std::to_string(ordit)] << Epbin_res;
+		oar["Ep"] << Epbin_res;
 		oar["counts"] << counts_res;
-		oar["Ep_intv/step"+std::to_string(ordit)] << Ep_intv_res;
+		oar["Ep_intv"] << Ep_intv_res;
 		oar.close();
 		
 		//setting binning container to zero again
-		Epbin = DiagMC_pl[0]->create_empty_Ep_acc();
-		Ep_intv = DiagMC_pl[0]->create_empty_Ep_acc();
+		Epbin = DiagMC_pl[0]->create_empty_Ep_acc("step"+std::to_string(ordit+1));
+		Ep_intv = DiagMC_pl[0]->create_empty_Ep_acc("step"+std::to_string(ordit+1));
 		counts = DiagMC_pl[0]->create_empty_count_acc(ordit+1);
 		
 		// time per  order step

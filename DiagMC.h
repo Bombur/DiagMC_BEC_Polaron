@@ -74,8 +74,8 @@ class DiagMC {
 
 	//Estimator
 	ArrayXd ws;		    	//different  omegas
-	ArrayXd Eptmp;			//temporary container for binning
-	ArrayXd Epol; 			//Polaron Energy Estimator for ws
+	std::vector<double> Eptmp;			//temporary container for binning
+	std::vector<double> Epol; 			//Polaron Energy Estimator for ws
 	ArrayXXd SE;			//Estimator for Self Energy 0: All_Order, 1:1st, 2: >1
 	ArrayXXcd G0SEiw;			//Estimator for Self Energy 0: All_Order, 1:endl1st, 2: >1
 	//binning
@@ -83,7 +83,7 @@ class DiagMC {
 	accumulators_type Epbin;  //measured each time
 	//Measure Ep always after a number of steps
 	double last_g0_count;
-	ArrayXd last_measured_Epol;
+	std::vector<double> last_measured_Epol;
 	accumulators_type Ep_intv; //measured every 500 times including count number
 	accumulators_type ordesti; //order estimator
 
@@ -200,7 +200,7 @@ class DiagMC {
 	//DiagMC_config.cpp
 	DiagMC(const int &, const pt::ptree &);
 	~DiagMC();
-	accumulators_type create_empty_Ep_acc();
+	accumulators_type create_empty_Ep_acc(const std::string & name);
 	accumulators_type create_empty_count_acc(const int &);
 	accumulators_type create_empty_ordesti(const int &);
 	
