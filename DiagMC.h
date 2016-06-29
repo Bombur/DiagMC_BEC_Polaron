@@ -76,7 +76,11 @@ class DiagMC {
 	ArrayXd ws;		    	//different  omegas
 	std::vector<double> Eptmp;			//temporary container for binning
 	std::vector<double> Epol; 			//Polaron Energy Estimator for ws
+	const bool SE_eigen;
 	ArrayXXd SE;			//Estimator for Self Energy 0: All_Order, 1:1st, 2: >1
+	accumulators_type SEacc;
+	std::vector<double> SEtmp;
+	const bool G0SEiw_meas; //Do I want to measure G0Se(iw)
 	ArrayXXcd G0SEiw;			//Estimator for Self Energy 0: All_Order, 1:endl1st, 2: >1
 	//binning
 	accumulators_type counts; //accumulator for norm counts
@@ -105,9 +109,10 @@ class DiagMC {
 
 	//Cumulative SE Calculation
 	int minord; // minimum Order (Norm Order)
-	int ordstsz; // order step Size
 	int ordstep; // current order step
 #ifdef SECUMUL 
+	int ordstsz; // order step Size
+	const std::vector<int> ord_tab; //Different Order StepSizes
 	ArrayXd SEib; //Self Energy inbetween minord and maxord
 	ArrayXd Norms; // Norm Diagrams for each order step
 	ArrayXd Ends; // End Diagrams for each step
@@ -201,6 +206,7 @@ class DiagMC {
 	DiagMC(const int &, const pt::ptree &);
 	~DiagMC();
 	accumulators_type create_empty_Ep_acc(const std::string & name);
+	accumulators_type create_empty_SE_acc(const std::string & name);
 	accumulators_type create_empty_count_acc(const int &);
 	accumulators_type create_empty_ordesti(const int &);
 	
@@ -250,6 +256,7 @@ class DiagMC {
 	ArrayXXd get_Eptest(); 
 	ArrayXd get_Ep();		//return Polaron Energy depending omegas (per Step for SECUMUL)
 	ArrayXXd get_SE();
+	accumulators_type get_SEacc();
 	ArrayXXcd get_G0SEiw();
 	//binning
 	accumulators_type get_counts(); //return accumulator for norm counts

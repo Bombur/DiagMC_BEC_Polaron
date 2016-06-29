@@ -19,12 +19,21 @@ void DiagMC::meas_Epol(){
 void DiagMC::meas_SE(const double & cor){
   double SEtaubin = taumap.bin(diag.get_tinit(2*diag.get_order()) - diag.get_tinit(1));
   if (diag.get_order() == 1) {
-	SE(SEtaubin, 0) += cor; //all Sigma
-	SE(SEtaubin, 1) += cor; //Sigma order ==1
-
+	if (SE_eigen){
+		SE(SEtaubin, 0) += cor; //all Sigma
+		SE(SEtaubin, 1) += cor; //Sigma order ==1
+	}
+	SEtmp[SEtaubin] = cor;
+	SEacc["ord1"] << SEtmp;
+	SEtmp[SEtaubin] = 0.;
   } else if (diag.get_order() > 1){
-	SE(SEtaubin, 0) += cor; //all Sigma
-	SE(SEtaubin, 2) += cor; //Sigma Order >1
+	if (SE_eigen){
+		SE(SEtaubin, 0) += cor; //all Sigma
+		SE(SEtaubin, 2) += cor; //Sigma Order >1
+	}
+	SEtmp[SEtaubin] = cor;
+	SEacc["step"+std::to_string(ordstep)] << SEtmp;
+	SEtmp[SEtaubin] = 0.;
   }
 }
 

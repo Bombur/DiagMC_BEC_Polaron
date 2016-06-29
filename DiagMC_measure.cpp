@@ -108,7 +108,7 @@ if ((cur_order > minord) && (cur_order <= maxord)) {
 	fill_Epcont(cor);
 	meas_Epol();
 	meas_SE(cor);
-	meas_G0SEiw(cor);
+	if (G0SEiw_meas) {meas_G0SEiw(cor);}
 	//binning
 	if (Ep_bin_each_step){bin_Epol();}
 	meas_ordesti();

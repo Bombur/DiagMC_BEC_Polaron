@@ -93,6 +93,12 @@ ArrayXd tmap::norm_table(){
   return output;  
 }
 
+void tmap::write_norm_tab() {
+	std::ofstream nt("data/SE/tau_norm_tab");  
+	nt << norm_table() << '\n';
+	nt.close();
+}
+
 
 void tmap::print_all() {
   for (const auto & mapit : mymap) {

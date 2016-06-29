@@ -50,6 +50,7 @@ class tmap {
 	int bin(const double & tau);  //to find right bin for tau --> DiagMC Measure
 	ArrayXd print(); //for output DiagMC io
 	ArrayXd norm_table();
+	void write_norm_tab();
 	
 	//Tests
 	void print_all();

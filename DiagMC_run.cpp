@@ -64,6 +64,10 @@ int main() {
 	ArrayXXd Eptot= ArrayXXd::Zero(ws.size(), nseeds);				//Ep tot of each seed 
 	//ArrayXXd Eptest = ArrayXXd::Zero(bintemp[bintemp.size()-1], ws.size());
 	std::vector<ArrayXXd> SE(nseeds, ArrayXXd::Zero(bintemp[bintemp.size()-1], 4)); 
+	//SE binning
+	alps::accumulators::accumulator_set SEacc;
+	SEacc = DiagMC_pl[0]->create_empty_SE_acc("step0");
+	SEacc << alps::accumulators::LogBinningAccumulator<std::vector<double>>("ord1");
 	std::vector<ArrayXXcd> G0SEiw(nseeds, ArrayXXcd::Zero(config.get<int>("Omega_bin"), 3)); 
 	
 	//count0 binning
@@ -301,6 +305,7 @@ int main() {
 		  Eptot.col(seed) = bec->get_Ep();
 		  //Eptest += bec->get_Eptest();
 		  SE[seed] = bec->get_SE();
+		  SEacc.merge(bec->get_SEacc());
 		  G0SEiw[seed] = bec->get_G0SEiw();
 		  
 		  //binning
@@ -324,6 +329,7 @@ int main() {
 	  }//end of omp for loop
 	  
 	  std::cout << "Writing binning results" << std::endl;
+
 	  //count0 binning analysis
 	  alps::accumulators::result_set counts_res(counts);
 	  counts_res["norm0"] *= counts_res["norm0"].count();
@@ -337,19 +343,28 @@ int main() {
 	  alps::accumulators::result_set Epbin_res(Epbin);
 	  if (DiagMC_pl[0]->Ep_bin_each_step){
 		 Epbin_res["step0"] *= Epbin_res["step0"].count()*DiagMC_pl[0]->get_Ep_norm()/counts_res["norm0"].mean<double>();
-		}
 	  }
 	  
 	  // Note the file is opened with write permission.
 	  std::string Ep_filename("data/Ep/Epbin.h5");
-	  alps::hdf5::archive oar(Ep_filename, "a");
-	  oar["Ep"] << Epbin_res;
-	  oar["counts"]<<counts_res;
-	  oar["Ep_intv"] << Ep_intv_res;
-	  //oar["G0tau0"]<< G0tau0_res;
-	  //oar["G0tau0_each"]<< G0tau0_each;
-	  oar.close();
+	  alps::hdf5::archive oar2(Ep_filename, "a");
+	  oar2["Ep"] << Epbin_res;
+	  oar2["counts"]<<counts_res;
+	  oar2["Ep_intv"] << Ep_intv_res;
+	  //oar2["G0tau0"]<< G0tau0_res;
+	  //oar2["G0tau0_each"]<< G0tau0_each;
+	  oar2.close();
 	
+	  //SE Binning
+	  alps::accumulators::result_set SEacc_res(SEacc);
+	  SEacc_res["step0"] *=SEacc_res["step0"].count()*DiagMC_pl[0]->get_Ep_norm()*DiagMC_pl[0]->get_tau_norm_table()/counts_res["norm0"].mean<double>();
+	  SEacc_res["ord1"] *=SEacc_res["ord1"].count()*DiagMC_pl[0]->get_Ep_norm()*DiagMC_pl[0]->get_tau_norm_table()/counts_res["norm0"].mean<double>();
+	  std::string SE_filename("data/SE/SEbin.h5");
+	  alps::hdf5::archive oar1(SE_filename, "a");
+	  oar1["SE>1"] << SEacc_res["step0"];
+	  oar1["SE1"] << SEacc_res["ord1"];
+	  oar1.close();
+	  
 	  
 #else	//-------------2nd Part of Order Loop--------------------------
 
@@ -430,6 +445,7 @@ int main() {
 		  G0SEiw[seed].col(0) = tmp2.col(0); 
 		  
 		  //binning
+		  SEacc.merge(bec->get_SEacc());
 		  if (bec->Ep_bin_each_step){Epbin.merge(bec->get_Epacc());}
 		  Ep_intv.merge(bec->get_Ep_intv());
 		  counts.merge(bec->get_counts());
@@ -489,6 +505,8 @@ int main() {
 		  eigen_push_back(fw_stat, fw_stat_tmp);
 		  std::cout << "# Combined Data!" << std::endl;
 		}
+
+		std::cout << "# Writing binning results"<< std::endl;
 			  
 		//count binning analysis
 		alps::accumulators::result_set counts_res(counts);
@@ -505,53 +523,65 @@ int main() {
 		}
 	
 		// Note the file is opened with write permission.
-		std::cout << "# Writing binning results"<< std::endl;
 		std::string filename("data/Ep/Epbin.h5");
 		alps::hdf5::archive oar(filename, "a");
-		oar["Ep"] << Epbin_res;
-		oar["counts"] << counts_res;
-		oar["Ep_intv"] << Ep_intv_res;
-		oar.close();
-		
-		//setting binning container to zero again
-		Epbin = DiagMC_pl[0]->create_empty_Ep_acc("step"+std::to_string(ordit+1));
-		Ep_intv = DiagMC_pl[0]->create_empty_Ep_acc("step"+std::to_string(ordit+1));
-		counts = DiagMC_pl[0]->create_empty_count_acc(ordit+1);
-		
-		// time per  order step
-		steady_clock::time_point Cumdt_end = steady_clock::now();
-		Cumdt = static_cast<double>(duration_cast<seconds>(Cumdt_end-Cumdt_be).count());
-		speedcumul /= static_cast<double>(nseeds);
-		speedcumul /= Cumdt;
-		
-		//Save Step Time for Order Step
-		stptime.push_back(Cumdt);
-		
-		//Order Step Adaption
-		Adaption OSA(DiagMC_pl[0]->get_ordstsz(), Cumdt, nnormstemp, nendstemp, config);
-		bottlenecks.push_back(static_cast<double>(OSA.whichbtlnk()));
-		if (config.get<bool>("ADAPTION")){
-		  int tempordstsz = OSA.ordstszadapt();
-		  std::cout<< "#Adapted Order Step Size from " << DiagMC_pl[0]->get_ordstsz() << " to " << tempordstsz << '\n';
-		  for (auto i : DiagMC_pl) {
-			i->set_ordstsz(tempordstsz);
-		  }
+	oar["Ep"] << Epbin_res;
+	oar["counts"] << counts_res;
+	oar["Ep_intv"] << Ep_intv_res;
+	oar.close();
+	
+	//SE Binning
+	alps::accumulators::result_set SEacc_res(SEacc);
+	SEacc_res["step"+std::to_string(ordit)] *=SEacc_res["step"+std::to_string(ordit)].count()*DiagMC_pl[0]->get_Ep_norm()/counts_res["norm"+std::to_string(ordit)].mean<double>();
+	std::string SE_filename("data/SE/SEbin.h5");
+	alps::hdf5::archive oar1(SE_filename, "a");
+	oar1["SE>1"] << SEacc_res;
+	if (ordit == 0) {
+		SEacc_res["ord1"] *=SEacc_res["ord1"].count()*DiagMC_pl[0]->get_Ep_norm()/counts_res["norm"+std::to_string(ordit)].mean<double>();
+		oar1["SE1"] << SEacc_res["ord1"];
+	}
+	oar1.close();
+  
+	//setting binning container to zero again
+	SEacc = DiagMC_pl[0]->create_empty_SE_acc("step"+std::to_string(ordit+1));
+	Epbin = DiagMC_pl[0]->create_empty_Ep_acc("step"+std::to_string(ordit+1));
+	Ep_intv = DiagMC_pl[0]->create_empty_Ep_acc("step"+std::to_string(ordit+1));
+	counts = DiagMC_pl[0]->create_empty_count_acc(ordit+1);
+	
+	// time per  order step
+	steady_clock::time_point Cumdt_end = steady_clock::now();
+	Cumdt = static_cast<double>(duration_cast<seconds>(Cumdt_end-Cumdt_be).count());
+	speedcumul /= static_cast<double>(nseeds);
+	speedcumul /= Cumdt;
+	
+	//Save Step Time for Order Step
+	stptime.push_back(Cumdt);
+	
+	//Order Step Adaption
+	Adaption OSA(DiagMC_pl[0]->get_ordstsz(), Cumdt, nnormstemp, nendstemp, config);
+	bottlenecks.push_back(static_cast<double>(OSA.whichbtlnk()));
+	if (config.get<bool>("ADAPTION")){
+	  int tempordstsz = OSA.ordstszadapt();
+	  std::cout<< "#Adapted Order Step Size from " << DiagMC_pl[0]->get_ordstsz() << " to " << tempordstsz << '\n';
+	  for (auto i : DiagMC_pl) {
+		i->set_ordstsz(tempordstsz);
+	  }
+	}
+			
+  //Check if we reached Total Maximum oder	
+	if ((DiagMC_pl[0]->TotMaxOrd == -1) || (DiagMC_pl[0]->TotMaxOrd > DiagMC_pl[0]->get_order() + DiagMC_pl[0]->get_ordstsz())) {
+	  #pragma omp parallel for ordered schedule(static, 1)
+	  for (int seed = 0; seed < nseeds; seed++)
+	  {
+		if (config.get<bool>("Averge_Norm_Stpw")){
+		  DiagMC_pl[seed]->set_av_nei(nnormstemp, nendstemp, ordit);
 		}
-				
-	  //Check if we reached Total Maximum oder	
-	  	if ((DiagMC_pl[0]->TotMaxOrd == -1) || (DiagMC_pl[0]->TotMaxOrd > DiagMC_pl[0]->get_order() + DiagMC_pl[0]->get_ordstsz())) {
-		  #pragma omp parallel for ordered schedule(static, 1)
-		  for (int seed = 0; seed < nseeds; seed++)
-		  {
-			if (config.get<bool>("Averge_Norm_Stpw")){
-			  DiagMC_pl[seed]->set_av_nei(nnormstemp, nendstemp, ordit);
-			}
-			DiagMC_pl[seed]->ord_step();
-		  }
-		} else if (DiagMC_pl[0]->TotMaxOrd == DiagMC_pl[0]->get_order()) { // we reached TotMaxOrd
-		  TotMaxOrdcheck = ordit + 1;
-		} else { // we have to change the last order step to reach Tot Max Ord
-		  const int laststsz = DiagMC_pl[0]->TotMaxOrd - DiagMC_pl[0]->get_order();
+		DiagMC_pl[seed]->ord_step();
+	  }
+	} else if (DiagMC_pl[0]->TotMaxOrd == DiagMC_pl[0]->get_order()) { // we reached TotMaxOrd
+	  TotMaxOrdcheck = ordit + 1;
+	} else { // we have to change the last order step to reach Tot Max Ord
+	  const int laststsz = DiagMC_pl[0]->TotMaxOrd - DiagMC_pl[0]->get_order();
 		  std::cout<<"#Last Step! Step Size changed to " << laststsz << std::endl;
 		  #pragma omp parallel for ordered schedule(static, 1)
 		  for (int seed = 0; seed < nseeds; seed++)

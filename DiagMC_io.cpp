@@ -86,6 +86,12 @@ alps::accumulators::accumulator_set DiagMC::get_Epacc(){
   return tmp;
 }
 
+alps::accumulators::accumulator_set DiagMC::get_SEacc(){
+  alps::accumulators::accumulator_set tmp;
+  tmp = SEacc;
+  return tmp;
+}
+
 double DiagMC::get_counts_for_Ep_norm(){
 #ifdef SECUMUL
   return 1./pref_calc();

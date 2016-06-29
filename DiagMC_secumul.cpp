@@ -2,11 +2,14 @@
 #ifdef SECUMUL
 
 void DiagMC::ord_step() {
+  ordstep += 1;
+  if (ordstep < ord_tab.size()){
+	if ((TotMaxOrd > (maxord+ord_tab[ordstep]))||(TotMaxOrd <0)) {ordstsz = ord_tab[ordstep];}
+  }	
   minord = maxord; 
   maxord += ordstsz;
   nnorms.push_back(0);
   nends.push_back(0);
-  ordstep += 1;
   
   SEib= ArrayXd::Zero(taumap.taubin);
   Norms = ArrayXd::Zero(taumap.taubin);
@@ -14,6 +17,7 @@ void DiagMC::ord_step() {
   
   Epol.assign(ws.size(), 0.);
   SE = ArrayXXd::Zero(taumap.taubin, SE.cols());
+  SEacc = create_empty_SE_acc("step"+std::to_string(ordstep)); 
   G0SEiw = ArrayXXcd::Zero(wbin, G0SEiw.cols());
   
   counts = create_empty_count_acc(ordstep);

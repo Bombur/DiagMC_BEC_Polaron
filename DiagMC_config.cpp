@@ -5,7 +5,7 @@ namespace pt = boost::property_tree;
 DiagMC::DiagMC(const int & thread, const pt::ptree & config):p(config.get<double>("Momentum")), qc(config.get<double>("Q_Cutoff")), mu(config.get<double>("Chemical_Potential")), alpha(config.get<double>("Alpha")), relm(config.get<double>("Impurity_Mass")),
 										wmax(config.get<double>("Omega_max")), wbin(config.get<int>("Omega_bin")), 
 										maxord(config.get<int>("Max_Order")),  
-										Ep_bin_each_step(config.get<bool>("Ep_bin_in_each_step")),
+										SE_eigen(config.get<bool>("SE_Eigen_Array")), Ep_bin_each_step(config.get<bool>("Ep_bin_in_each_step")), G0SEiw_meas(config.get<bool>("G0SEiw_meas")),
 										ctcor(config.get<double>("Correction_tau")),  qcor(config.get<double>("Correction_dq")),  dtins(config.get<double>("Insert_FP_DT")), dqins(config.get<double>("Insert_QRange")), 
 										fw(config.get<double>("Fake_Weight")),
 										qsigma(config.get<int>("Q_Gauss")), explim(config.get<double>("Exp_Arg_Limit")), doitlim(config.get<int>("Do_While_Limit")),
@@ -15,7 +15,7 @@ DiagMC::DiagMC(const int & thread, const pt::ptree & config):p(config.get<double
 										Prem(config.get<double>("Remove_Probability")), Pins(config.get<double>("Insert_Probability")), Pct(config.get<double>("Change_tau_Probability")), Pctho(config.get<double>("Change_tau_in_HO_Probability")), Psw(config.get<double>("Swap_Probability")), Pdq(config.get<double>("DQ_Probability")), Pic(config.get<double>("IC_Probability")), Prc(config.get<double>("RC_Probability")),
 										Meas_its(config.get<int>("Its_per_Measure")), Test_its(config.get<int>("Its_per_Test")), Write_its(config.get<int>("Its_per_Write")), Ep_meas_it(config.get<int>("Ep_Meas")),
 										RunTime(config.get<int>("RunTime")), ThermTime(config.get<int>("Therm_Time")),
-										ordstsz(config.get<int>("Order_Step_Size")), normmin(static_cast<int>(config.get<double>("Norm_Points")/config.get<double>("NCores"))), endmin(static_cast<int>(config.get<double>("End_Points")/config.get<double>("NCores"))), TotRunTime(config.get<int>("Total_Time")), TotMaxOrd(config.get<int>("Total_Max_Order")),
+										ord_tab(as_vector<int>(config, "Order_Step_Table")), normmin(static_cast<int>(config.get<double>("Norm_Points")/config.get<double>("NCores"))), endmin(static_cast<int>(config.get<double>("End_Points")/config.get<double>("NCores"))), TotRunTime(config.get<int>("Total_Time")), TotMaxOrd(config.get<int>("Total_Max_Order")),
 										which_fw_ad(config.get<int>("Which_fw_adapt()")), desi_rat(config.get<double>("Desi_fw_rat")),fw_max(config.get<double>("Fake_Weight_Max")),
 										taumap(tmap(create_fvec(config), as_vector<int>(config, "Bins"), as_vector<double>(config, "Taus"), config.get<int>("Tminit"), config.get<int>("Tmaxit")))
 { 
@@ -60,6 +60,9 @@ DiagMC::DiagMC(const int & thread, const pt::ptree & config):p(config.get<double
 	Eptmp.assign(ws.size(), 0.);
 	Epol.assign(ws.size(), 0.);
 	SE = ArrayXXd::Zero(taumap.taubin,3);
+	SEacc = create_empty_SE_acc("step0");
+	SEacc << alps::accumulators::LogBinningAccumulator<std::vector<double>>("ord1");
+	SEtmp.assign(taumap.taubin, 0.);
 	G0SEiw = ArrayXXcd::Zero(wbin, 2);
 	//binning
 	counts = create_empty_count_acc(0);
@@ -85,6 +88,7 @@ DiagMC::DiagMC(const int & thread, const pt::ptree & config):p(config.get<double
 	minord = 0;
 	ordstep = 0;
 #ifdef SECUMUL
+	ordstsz = ord_tab[0];
 	if (config.get<bool>("1st_Step_Max_Ord")){
 		if ((maxord>TotMaxOrd) && (TotMaxOrd>0)) {maxord = TotMaxOrd;}
 	} else {
@@ -120,6 +124,7 @@ DiagMC::DiagMC(const int & thread, const pt::ptree & config):p(config.get<double
 	global_weight= logG0el(diag.get_p(0), diag.get_tfin(0), diag.get_tinit(0));
 
 	lu = "nothing";
+	if (thread == 0){taumap.write_norm_tab();}
   } 
   catch (std::exception& e){
 	std::cerr << e.what() << std::endl;
@@ -135,6 +140,12 @@ alps::accumulators::accumulator_set DiagMC::create_empty_Ep_acc(const std::strin
   accumulators_type Ep_empty;
   Ep_empty << alps::accumulators::LogBinningAccumulator<std::vector<double>>(name);
   return Ep_empty;
+}
+
+alps::accumulators::accumulator_set DiagMC::create_empty_SE_acc(const std::string & name){
+  accumulators_type SE_empty;
+  SE_empty << alps::accumulators::LogBinningAccumulator<std::vector<double>>(name);
+  return SE_empty;
 }
 
 alps::accumulators::accumulator_set DiagMC::create_empty_count_acc(const int & order){
