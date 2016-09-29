@@ -1,0 +1,97 @@
+//config
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+ 
+//io
+#include <iostream>
+#include <fstream>
+#include <string> 
+ 
+//random
+#include <random>
+#include <functional>
+
+//exceptions
+#include <assert.h>
+#include "DiagramException.h"
+
+//math and container
+#include "/project/theorie/h/H.Guertner/lib/Eigen/Eigen/Dense"
+#define _USE_MATH_DEFINES
+#include <cmath>
+#include "dvector.h"
+#include <array>
+#include "mystructs.h"
+#include <algorithm>
+
+#ifndef __DIAGRAM_H_INCLUDED__
+#define __DIAGRAM_H_INCLUDED__
+
+namespace pt = boost::property_tree;
+using namespace Eigen;
+
+
+ 
+class Diagram {
+  private:
+	std::function<double()> drnd;
+	int order;
+	std::vector< vertex > times;
+	std::vector< std::array<double,3> > phprop; // to control the electron prop vector
+	std::vector< std::array<double,3> > elprop;
+	
+	std::size_t befcap;  //to check Capacity of the containers
+  public:
+	Diagram();
+	void set(const double & p, const double & tau, const std::function<double()> & rnd);
+	 
+	int get_order() {return order;}
+	double get_tau() {return times[2*order+1].t;}
+	double get_tinit(const int & arc) {return times[arc].t;}
+	double get_tfin(const int & arc) {return times[arc+1].t;}
+	int get_link(const int & arc) {return times[arc].link;}
+	std::array<double,3> get_q(const int & arc) {return phprop[arc];}
+	std::array<double,3> get_p(const int & arc) {return elprop[arc];}
+	
+	  
+	//proposing pr_ 
+	int pr_arc;
+	double pr_tauin, pr_taufin;
+	vertex pr_tau1;
+	vertex pr_tau2;
+	std::array<double,3> pr_q;
+	std::array<double,3> pr_p;
+	 
+
+	//proposing
+	void random_arc();
+	int propose_swap();
+	void linear_q(const double & dqins);
+	void gauss_q(const double & sigma, const double & dqins);
+	
+	//changes
+	void insert();
+	void remove();
+	int set_tau(double tau);
+	void swap();
+	void ct();
+	void dq();
+	void inscrossed();
+	void remcrossed();
+	
+	//tests
+	void test(const double & qc);
+	void printall(); 
+	bool is_reducible();
+	int arch_num(const int &);
+	
+	//secumul
+	void capacity_check();
+	
+	
+};
+
+
+
+   
+#endif
